@@ -1,381 +1,384 @@
-# jiosaavn-api-client
+# JioSaavn API Client
 
-TypeScript/JavaScript client for JioSaavn's native API. Direct access to songs, albums, artists, playlists, and search—no proxy server needed.
+Pure-JS client for JioSaavn's native API. Works on Node, Bun, Cloudflare Workers, Vercel Edge, and Deno.
 
 [![npm](https://img.shields.io/npm/v/jiosaavn-api-client?logo=npm&style=for-the-badge)](https://www.npmjs.com/package/jiosaavn-api-client)
-[![downloads](https://img.shields.io/npm/dm/jiosaavn-api-client?style=for-the-badge))](https://www.npmjs.com/package/jiosaavn-api-client)
-[![license](https://img.shields.io/npm/l/jiosaavn-api-client?style=for-the-badge))](./LICENSE)
+[![downloads](https://img.shields.io/npm/dm/jiosaavn-api-client?style=for-the-badge)](https://www.npmjs.com/package/jiosaavn-api-client)
+[![license](https://img.shields.io/npm/l/jiosaavn-api-client?style=for-the-badge)](./LICENSE)
 
 ## Table of Contents
+
 - [Features](#features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [API Types](#api-types)
 - [API Reference](#api-reference)
-- [Common Patterns](#common-patterns)
-- [Platforms](#platforms)
-- [Error Handling](#error-handling)
+- [Advanced Usage](#advanced-usage)
+- [Compatibility](#compatibility)
 - [Notes](#notes)
+- [License](#license)
 
 ## Features
-- 🎵 **Search** songs, albums, artists, playlists
-- 🔊 **Song suggestions** & infinite radio
-- 🎬 Full **album**, **artist**, **playlist** support
-- 🔐 **Audio URL decryption** (DES-ECB, pure-JS)
-- 🌍 Works on **Node.js**, **Bun**, **Cloudflare Workers**, **Vercel Edge**, **Deno**
-- 📦 Full **TypeScript** support
-- ⚡ Auto **link token extraction**
+
+✨ **Out-of-the-box ready** - All functions are fully typed and documented
+
+- 🔍 **Search** - Songs, Albums, Artists, Playlists
+- 🎵 **Songs** - Get by ID(s), Link, or Suggestions
+- 💿 **Albums** - Get album details with all songs
+- 🎤 **Artists** - Get artist info with top songs and albums
+- 📋 **Playlists** - Get playlist details with all songs in consistent Song format
+- 🖼️ **Image Links** - Multiple quality options (50x50, 150x150, 500x500)
+- 📥 **Download Links** - Multiple bitrates (12, 48, 96, 160, 320 kbps)
+- 🎙️ **Song Suggestions** - Get radio recommendations
 
 ## Installation
 
 ```bash
-# npm 
 npm install jiosaavn-api-client
-
-# bun
+# or
 bun add jiosaavn-api-client
-
-# pnpm
-pnpm add jiosaavn-api-client
+# or
+yarn add jiosaavn-api-client
 ```
 
 ## Quick Start
 
+### Search Songs
+
 ```typescript
-import { getSongsById, searchSongs, createDownloadLinks } from 'jiosaavn-api-client'
+import { searchSongs } from "jiosaavn-api-client";
 
-// Search songs
-const search = await searchSongs({ query: 'imagine dragons', limit: 5 })
-console.log(search.data.results[0])
+const result = await searchSongs({ query: "blinding lights", limit: 10 });
+result.data.results.forEach((song) => {
+  console.log(song.title);
+  console.log(song.image); // Image links in different qualities
+  console.log(song.duration); // Duration in seconds
+});
+```
 
-// Get by ID
-const { data } = await getSongsById('3IoDK8qI')
-const song = data.songs[0]
+### Get Song Details by ID
 
-// Get download links
-const links = createDownloadLinks(song.more_info.encrypted_media_url)
-console.log(links) // [{ quality: '320kbps', url: '...' }, ...]
+```typescript
+import { getSongsById } from "jiosaavn-api-client";
+
+// Single song
+const result = await getSongsById("song-id-123");
+const song = result.data.songs[0];
+
+// Multiple songs
+const result = await getSongsById(["song-1", "song-2", "song-3"]);
+result.data.songs.forEach((song) => {
+  console.log(song.title);
+  console.log(song.image); // Image links in different qualities
+  console.log(song.downloadLinks); // Download links in different bitrates
+});
+```
+
+### Get Playlist with All Songs
+
+```typescript
+import { getPlaylistById } from "jiosaavn-api-client";
+
+const result = await getPlaylistById({ id: "playlist-id-123", limit: 100 });
+const playlist = result.data;
+
+console.log(playlist.title, playlist.songCount);
+playlist.songs?.forEach((song) => {
+  // Same Song object structure as searchSongs and getSongsById
+  console.log(song.title);
+  console.log(song.image); // Image links
+  console.log(song.downloadLinks); // Download links
+});
+```
+
+### Get Album with All Songs
+
+```typescript
+import { getAlbumById } from "jiosaavn-api-client";
+
+const result = await getAlbumById("album-id-123");
+const album = result.data;
+
+console.log(album.title, album.songCount);
+album.songs?.forEach((song) => {
+  console.log(song.title);
+  console.log(song.downloadLinks); // Ready for download
+});
+```
+
+### Get Artist Details with Top Songs and Albums
+
+```typescript
+import { getArtistById } from "jiosaavn-api-client";
+
+const result = await getArtistById({
+  id: "artist-id-123",
+  songCount: 20,
+  albumCount: 10,
+  sortBy: "popularity",
+  sortOrder: "desc",
+});
+
+const artist = result.data;
+artist.topSongs?.forEach((song) => console.log(song.title));
+artist.albums?.forEach((album) => console.log(album.title));
+```
+
+### Get Song Suggestions
+
+```typescript
+import { getSongSuggestions } from "jiosaavn-api-client";
+
+const songs = await getSongSuggestions({ songId: "song-id-123", limit: 20 });
+songs.forEach((song) => console.log(song.title)); // Similar songs
+```
+
+## API Types
+
+All responses are fully typed. Here are the main types:
+
+### Song
+
+```typescript
+interface Song {
+  id: string;
+  title: string;
+  artist: { id: string; name: string; image?: ImageLink[] };
+  artists?: Artist[];
+  album: { id: string; name: string };
+  image: ImageLink[]; // Multiple quality options
+  duration: number; // In seconds
+  downloadLinks?: DownloadLink[]; // Multiple bitrates
+  encryptedMediaUrl?: string;
+  [key: string]: any;
+}
+```
+
+### Album
+
+```typescript
+interface Album {
+  id: string;
+  title: string;
+  artist: { id: string; name: string };
+  image: ImageLink[];
+  songs?: Song[]; // Same Song structure
+  songCount?: number;
+  [key: string]: any;
+}
+```
+
+### Artist
+
+```typescript
+interface Artist {
+  id: string;
+  name: string;
+  image: ImageLink[];
+  topSongs?: Song[]; // Same Song structure
+  albums?: Album[]; // Same Album structure
+  [key: string]: any;
+}
+```
+
+### Playlist
+
+```typescript
+interface Playlist {
+  id: string;
+  title: string;
+  image: ImageLink[];
+  songs?: Song[]; // Same Song structure
+  songCount: number;
+  owner?: { name: string };
+  [key: string]: any;
+}
+```
+
+### ImageLink
+
+```typescript
+interface ImageLink {
+  quality: string; // '50x50', '150x150', '500x500'
+  url: string;
+}
+```
+
+### DownloadLink
+
+```typescript
+interface DownloadLink {
+  quality: string; // '12kbps', '48kbps', '96kbps', '160kbps', '320kbps'
+  url: string;
+}
+```
+
+### API Response
+
+All functions return:
+
+```typescript
+interface ApiResponse<T> {
+  data: T;
+  ok: boolean;
+  status: number;
+}
 ```
 
 ## API Reference
 
-### Search Methods
+### Search Functions
 
-#### `searchAll(query: string)`
-Global search across all types.
+- `searchAll(query)` - Search all types
+- `searchSongs(args)` - Search songs: `{ query, page?, limit? }`
+- `searchAlbums(args)` - Search albums: `{ query, page?, limit? }`
+- `searchArtists(args)` - Search artists: `{ query, page?, limit? }`
+- `searchPlaylists(args)` - Search playlists: `{ query, page?, limit? }`
+
+### Song Functions
+
+- `getSongsById(ids)` - Get songs by ID(s): single string or array
+- `getSongByLink(link)` - Get song from JioSaavn URL
+- `getSongSuggestions(args)` - Get recommendations: `{ songId, limit? }`
+
+### Album Functions
+
+- `getAlbumById(id)` - Get album by ID
+- `getAlbumByLink(link)` - Get album from JioSaavn URL
+
+### Artist Functions
+
+- `getArtistById(args)` - Get artist: `{ id, page?, songCount?, albumCount?, sortBy?, sortOrder? }`
+- `getArtistByLink(args)` - Get artist from JioSaavn URL
+- `getArtistSongs(args)` - Get paginated artist songs: `{ id, page?, sortBy?, sortOrder? }`
+- `getArtistAlbums(args)` - Get paginated artist albums: `{ id, page?, sortBy?, sortOrder? }`
+
+### Playlist Functions
+
+- `getPlaylistById(args)` - Get playlist: `{ id, page?, limit? }`
+- `getPlaylistByLink(args)` - Get playlist from JioSaavn URL
+
+### Utility Functions
+
+- `createImageLinks(url)` - Create image URLs in different qualities
+- `createDownloadLinks(encryptedUrl)` - Decrypt and create download URLs
+- `pickUserAgent(userAgents?)` - Pick random User-Agent for requests
+- `stringifyIds(ids)` - Convert single or multiple IDs to comma-separated string
+- `ensureToken(token, kind)` - Ensure token exists or throw error
+- `tokenExtractors` - Extract tokens from JioSaavn URLs
+
+## Advanced Usage
+
+### Custom User Agents
+
 ```typescript
-const { data } = await searchAll('believer')
-// Returns: { songs: [...], albums: [...], artists: [...], playlists: [...] }
+import { fetchFromSaavn } from "jiosaavn-api-client/fetch";
+
+const response = await fetchFromSaavn({
+  endpoint: "song.getDetails",
+  params: { pids: "song-id" },
+  userAgents: ["Custom UA 1", "Custom UA 2"],
+});
 ```
 
-#### `searchSongs({ query, page?, limit? })`
-Search songs with pagination.
+### Android Context
+
 ```typescript
-const { data } = await searchSongs({ query: 'believer', page: 0, limit: 10 })
-console.log(data.total)     // total results
-console.log(data.results)   // [{ id, title, more_info, ... }]
+import { fetchFromSaavn } from "jiosaavn-api-client/fetch";
+
+const response = await fetchFromSaavn({
+  endpoint: "webradio.createEntityStation",
+  params: {
+    /* ... */
+  },
+  context: "android", // Use Android API context
+});
 ```
 
-#### `searchAlbums({ query, page?, limit? })`
+### Direct API Access
+
 ```typescript
-const { data } = await searchAlbums({ query: 'evolve' })
+import { fetchFromSaavn } from "jiosaavn-api-client/fetch";
+
+const response = await fetchFromSaavn({
+  endpoint: "song.getDetails",
+  params: { pids: "song-id" },
+  context: "web6dot0",
+  headers: { "X-Custom": "header" },
+});
 ```
 
-#### `searchArtists({ query, page?, limit? })`
+### Utility Helper Functions
+
 ```typescript
-const { data } = await searchArtists({ query: 'adele' })
+import { 
+  createDownloadLinks, 
+  createImageLinks, 
+  pickUserAgent,
+  stringifyIds,
+  ensureToken,
+  tokenExtractors 
+} from 'jiosaavn-api-client'
+
+// Create download links from encrypted URL
+const downloadLinks = createDownloadLinks(encryptedMediaUrl)
+
+// Create image URLs in different qualities
+const imageUrls = createImageLinks(baseImageUrl)
+
+// Pick a random user agent
+const ua = pickUserAgent()
+
+// Convert IDs to string
+const idString = stringifyIds(['id1', 'id2', 'id3']) // 'id1,id2,id3'
+
+// Extract token from URL
+const token = tokenExtractors.song(songUrl)
+
+// Ensure token exists
+const safeToken = ensureToken(token, 'song')
 ```
 
-#### `searchPlaylists({ query, page?, limit? })`
-```typescript
-const { data } = await searchPlaylists({ query: 'indie' })
-```
+## Compatibility
 
-### Songs
-
-#### `getSongsById(songIds: string | string[])`
-Fetch songs by one or multiple IDs.
-```typescript
-// Single song
-const { data } = await getSongsById('3IoDK8qI')
-
-// Multiple songs
-const { data } = await getSongsById(['3IoDK8qI', '4IoDK8qI', '5IoDK8qI'])
-
-console.log(data.songs[0])
-// {
-//   id: '3IoDK8qI',
-//   title: 'Levitating',
-//   more_info: { encrypted_media_url, album, artists, ... }
-// }
-```
-
-#### `getSongsByLink(link: string)`
-Fetch song by JioSaavn link (auto-extracts token).
-```typescript
-const { data } = await getSongsByLink('https://www.jiosaavn.com/song/houdini/OgwhbhtDRwM')
-console.log(data.songs[0].title)
-```
-
-#### `getSongSuggestions(songId: string, limit?: number)`
-Get song radio suggestions.
-```typescript
-const { data } = await getSongSuggestions('3IoDK8qI', 10)
-console.log(data)  // [{ id, title, ... }, ...]
-```
-
-#### `createSongStation(songId: string)`
-Create a station for infinite radio playback.
-```typescript
-const stationId = await createSongStation('3IoDK8qI')
-// Use stationId to fetch infinite suggestions
-```
-
-### Albums
-
-#### `getAlbumById(albumId: string)`
-```typescript
-const { data } = await getAlbumById('23241654')
-console.log(data.name)              // Album name
-console.log(data.songs)             // [song1, song2, ...]
-console.log(data.artists)           // Primary artists
-```
-
-#### `getAlbumByLink(link: string)`
-```typescript
-const { data } = await getAlbumByLink('https://www.jiosaavn.com/album/future-nostalgia/ITIyo-GDr7A_')
-```
-
-### Artists
-
-#### `getArtistById(options)`
-```typescript
-const { data } = await getArtistById({
-  artistId: '1274170',
-  page: 0,
-  songCount: 10,
-  albumCount: 5,
-  sortBy: 'popularity',  // 'popularity' | 'latest' | 'alphabetical'
-  sortOrder: 'asc'       // 'asc' | 'desc'
-})
-console.log(data.topSongs)      // Latest songs
-console.log(data.topAlbums)     // Latest albums
-console.log(data.similarArtists) // Related artists
-```
-
-#### `getArtistByLink(options)`
-```typescript
-const { data } = await getArtistByLink({
-  link: 'https://www.jiosaavn.com/artist/dua-lipa-songs/r-OWIKgpX2I_',
-  songCount: 15
-})
-```
-
-#### `getArtistSongs(options)`
-Get artist's songs with sorting.
-```typescript
-const { data } = await getArtistSongs({
-  artistId: '1274170',
-  page: 0,
-  sortBy: 'latest'
-})
-```
-
-#### `getArtistAlbums(options)`
-Get artist's albums.
-```typescript
-const { data } = await getArtistAlbums({
-  artistId: '1274170',
-  page: 0
-})
-```
-
-### Playlists
-
-#### `getPlaylistById(options)`
-```typescript
-const { data } = await getPlaylistById({
-  id: '82914609',
-  page: 0,
-  limit: 20
-})
-console.log(data.songs)  // Paginated songs
-```
-
-#### `getPlaylistByLink(options)`
-```typescript
-const { data } = await getPlaylistByLink({
-  link: 'https://www.jiosaavn.com/featured/its-indie-english/AMoxtXyKHoU_',
-  limit: 50
-})
-```
-
-### Utilities
-
-#### `createDownloadLinks(encryptedMediaUrl: string)`
-Decrypt encrypted audio URL and generate multiple bitrates.
-```typescript
-const links = createDownloadLinks(encryptedMediaUrl)
-// Output:
-// [
-//   { quality: '12kbps', url: '...' },
-//   { quality: '48kbps', url: '...' },
-//   { quality: '96kbps', url: '...' },
-//   { quality: '160kbps', url: '...' },
-//   { quality: '320kbps', url: '...' }
-// ]
-```
-
-#### `createImageLinks(imageUrl: string)`
-Generate image URLs in multiple resolutions.
-```typescript
-const images = createImageLinks(imageUrl)
-// Output:
-// [
-//   { quality: '50x50', url: '...' },
-//   { quality: '150x150', url: '...' },
-//   { quality: '500x500', url: '...' }
-// ]
-```
-
-#### `tokenExtractors`
-Manually extract tokens from JioSaavn URLs.
-```typescript
-import { tokenExtractors } from 'jiosaavn-api-client'
-
-const songToken = tokenExtractors.song('https://www.jiosaavn.com/song/houdini/OgwhbhtDRwM')
-const albumToken = tokenExtractors.album('https://www.jiosaavn.com/album/evolve/...')
-const artistToken = tokenExtractors.artist('https://www.jiosaavn.com/artist/dua-lipa-songs/...')
-const playlistToken = tokenExtractors.playlist('https://www.jiosaavn.com/featured/indie/...')
-```
-
-## Common Patterns
-
-### Search and Get Details
-```typescript
-import { searchSongs, getSongsById } from 'jiosaavn-api-client'
-
-const search = await searchSongs({ query: 'believer', limit: 1 })
-const songId = search.data.results[0].id
-
-const details = await getSongsById(songId)
-const song = details.data.songs[0]
-console.log(song.more_info.album)
-```
-
-### Download Audio
-```typescript
-import { getSongsById, createDownloadLinks } from 'jiosaavn-api-client'
-
-const { data } = await getSongsById('3IoDK8qI')
-const encrypted = data.songs[0].more_info.encrypted_media_url
-
-const links = createDownloadLinks(encrypted)
-const highQuality = links.find(l => l.quality === '320kbps')
-console.log('Download:', highQuality.url)
-```
-
-### Infinite Radio
-```typescript
-import { createSongStation, getSongSuggestions } from 'jiosaavn-api-client'
-
-const stationId = await createSongStation('3IoDK8qI')
-
-// Fetch suggestions repeatedly
-for (let i = 0; i < 3; i++) {
-  const { data: songs } = await getSongSuggestions('3IoDK8qI', 10)
-  console.log(`Batch ${i + 1}:`, songs.map(s => s.title))
-}
-```
-
-### Playlist to MP3 List
-```typescript
-import { getPlaylistByLink, createDownloadLinks } from 'jiosaavn-api-client'
-
-const { data: playlist } = await getPlaylistByLink({
-  link: 'https://www.jiosaavn.com/featured/indie/...',
-  limit: 100
-})
-
-const songs = playlist.songs || []
-const downloads = songs.map(song => ({
-  title: song.name,
-  artist: song.artists.primary.map(a => a.name).join(', '),
-  url: createDownloadLinks(song.more_info.encrypted_media_url)
-    .find(l => l.quality === '320kbps')?.url
-}))
-
-console.log(downloads)
-```
-
-## Platforms
-
-| Runtime | Status | Notes |
-|---------|--------|-------|
-| **Node.js** | ✅ | All features |
-| **Bun** | ✅ | All features |
-| **Cloudflare Workers** | ✅ | All features |
-| **Vercel Edge** | ✅ | All features |
-| **Deno** | ✅ | Use `npm:` prefix |
-
-### Cloudflare Worker Example
-```typescript
-export default {
-  async fetch(request: Request) {
-    const url = new URL(request.url)
-    const query = url.searchParams.get('q')
-    
-    if (!query) {
-      return Response.json({ error: 'Missing query param: q' }, { status: 400 })
-    }
-
-    const { searchSongs } = await import('jiosaavn-api-client')
-    const { data, ok, status } = await searchSongs({ query, limit: 5 })
-    
-    return Response.json({ success: ok, data }, { status })
-  }
-}
-```
-
-## Error Handling
-
-All functions return `{ data, ok, status }`:
-```typescript
-import { searchSongs } from 'jiosaavn-api-client'
-
-const { data, ok, status } = await searchSongs({ query: 'believer' })
-
-if (!ok) {
-  console.error(`Request failed with status ${status}`)
-}
-
-if (data.results.length === 0) {
-  console.log('No results found')
-}
-```
-
-### Common Issues
-
-**"No results found"**
-- Check query spelling
-- Use simpler/shorter queries
-- Try different search types
-
-**"Token extraction failed"**
-- Ensure URL is complete and properly formatted
-- Verify it's a valid JioSaavn URL
-
-**"Rate limited"**
-- JioSaavn may throttle rapid requests
-- Add delays between calls: `await new Promise(r => setTimeout(r, 1000))`
+- ✅ Node.js (18+)
+- ✅ Bun
+- ✅ Deno
+- ✅ Cloudflare Workers
+- ✅ Vercel Edge Functions
+- ✅ Browser (with appropriate fetch implementation)
 
 ## Notes
 
-- **Auto token extraction**: Links like `https://www.jiosaavn.com/song/title/TOKEN` automatically extract `TOKEN`
-- **Decryption**: Audio URLs are decrypted on-demand using pure-JS DES-ECB (no Node.js crypto needed)
-- **Pagination**: Use `page` (0-indexed) and `limit` for large result sets
-- **Caching**: Cache decrypted URLs in your app to avoid redundant decryption
-- **Rate limiting**: JioSaavn may throttle aggressive requests; use reasonable `limit` and `page` values
-- **Bitrates**: Available qualities are `12kbps`, `48kbps`, `96kbps`, `160kbps`, `320kbps`
+### Response Structure
+- All functions return `ApiResponse<T>` with `data`, `ok`, and `status` fields
+- Check `response.ok` to determine if the request was successful
+- The `data` field contains the actual response from JioSaavn API
+
+### Song Objects
+- Songs returned from any function have a consistent structure with `image` (array of `ImageLink`) and optional `downloadLinks` (array of `DownloadLink`)
+- Use `createDownloadLinks()` if `downloadLinks` is not present but `encryptedMediaUrl` is available
+- Use `createImageLinks()` to generate image URLs in different qualities
+
+### Pagination
+- Default `page` is 0 (first page)
+- Default `limit` is 10 results per page
+- Check `total` in `PaginatedResponse` to know total available results
+
+### Error Handling
+- URL token extraction functions throw errors if token cannot be extracted from URL
+- Song suggestions may throw errors if station creation fails
+- Always wrap API calls in try-catch for proper error handling
+
+### Rate Limiting
+- The client automatically rotates User-Agent strings to avoid rate limiting
+- If you hit rate limits, consider adding delays between requests
+- Use Android context for some endpoints if web context fails
+
+### Image & Download URLs
+- Images in different qualities: `50x50`, `150x150`, `500x500`
+- Audio downloads in bitrates: `12kbps`, `48kbps`, `96kbps`, `160kbps`, `320kbps`
+- Download URLs are decrypted automatically using DES-ECB
 
 ## License
 
@@ -385,4 +388,3 @@ This project is licensed under the MIT License.
 You are free to use, modify, and distribute it, including for commercial purposes.
 
 See the [LICENSE](./LICENSE) file for full details.
-
