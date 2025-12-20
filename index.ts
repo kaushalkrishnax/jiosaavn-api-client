@@ -133,6 +133,20 @@ const transformSong = (song: any): Song => {
   if (!song) return song
   
   const transformed = { ...song }
+
+  // Normalize encryptedMediaUrl from more_info if present
+  if (!transformed.encryptedMediaUrl && song.more_info?.encrypted_media_url) {
+    transformed.encryptedMediaUrl = song.more_info.encrypted_media_url
+  }
+
+  // Normalize duration (API often returns string)
+  if (transformed.duration === undefined && song.more_info?.duration) {
+    const d = Number(song.more_info.duration)
+    if (!Number.isNaN(d)) transformed.duration = d
+  } else if (typeof transformed.duration === 'string') {
+    const d = Number(transformed.duration)
+    if (!Number.isNaN(d)) transformed.duration = d
+  }
   
   // Transform image URL to ImageLink array if needed
   if (song.image && typeof song.image === 'string') {
@@ -142,8 +156,8 @@ const transformSong = (song: any): Song => {
   }
   
   // Transform encrypted media URL to downloadLinks if available
-  if (song.encryptedMediaUrl && !song.downloadLinks) {
-    transformed.downloadLinks = createDownloadLinks(song.encryptedMediaUrl)
+  if (transformed.encryptedMediaUrl && !transformed.downloadLinks) {
+    transformed.downloadLinks = createDownloadLinks(transformed.encryptedMediaUrl)
   }
   
   return transformed

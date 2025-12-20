@@ -1,6 +1,6 @@
 {
   "name": "jiosaavn-api-client",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Pure-JS client for JioSaavn's native API. Works on Node, Bun, Cloudflare Workers, Vercel Edge, and Deno.",
   "type": "module",
   "main": "./index.ts",
