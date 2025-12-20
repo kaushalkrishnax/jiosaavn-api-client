@@ -1,0 +1,9 @@
+node_modules/
+*.log
+.DS_Store
+test.js
+build.ts
+tsconfig.json
+bun.lockb
+*.test.ts
+*.spec.ts
