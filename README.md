@@ -10,6 +10,7 @@ Pure-JS client for JioSaavn's native API. Works on Node, Bun, Cloudflare Workers
 
 - [Features](#features)
 - [Installation](#installation)
+- [Scope and Non-Goals](#scope-and-non-goals)
 - [Quick Start](#quick-start)
 - [API Types](#api-types)
 - [API Reference](#api-reference)
@@ -31,6 +32,18 @@ Pure-JS client for JioSaavn's native API. Works on Node, Bun, Cloudflare Workers
 - 📥 **Download Links** - Multiple bitrates (12, 48, 96, 160, 320 kbps)
 - 🎙️ **Song Suggestions** - Get radio recommendations
 
+## Scope and Non-Goals
+
+This library focuses on:
+- Typed access to JioSaavn metadata and media URLs
+- Consistent response structures across APIs
+- Cross-runtime compatibility (Node, Bun, Edge, Workers)
+
+This library does not aim to:
+- Replace the official JioSaavn application
+- Act as a streaming service
+- Provide guaranteed long-term API stability
+
 ## Installation
 
 ```bash
@@ -51,10 +64,13 @@ import { searchSongs } from "jiosaavn-api-client";
 const result = await searchSongs({ query: "blinding lights", limit: 10 });
 result.data.results.forEach((song) => {
   console.log(song.title);
-  console.log(song.image); // Image links in different qualities
+  console.log(song.image); // ImageLink[] (normalized image variants)
   console.log(song.duration); // Duration in seconds
 });
 ```
+
+Note: `searchSongs` returns search results.  
+Use `getSongsById` to fetch fully hydrated `Song` objects with download links.
 
 ### Get Song Details by ID
 
@@ -310,6 +326,9 @@ const response = await fetchFromSaavn({
 
 ### Utility Helper Functions
 
+These helpers are exposed for advanced use cases and internal composition.
+They are not considered part of the stable public API.
+
 ```typescript
 import { 
   createDownloadLinks, 
@@ -371,7 +390,8 @@ const safeToken = ensureToken(token, 'song')
 - Always wrap API calls in try-catch for proper error handling
 
 ### Rate Limiting
-- The client automatically rotates User-Agent strings to avoid rate limiting
+- The client supports User-Agent rotation to reduce the risk of request throttling.
+- This does not guarantee immunity from upstream rate limits.
 - If you hit rate limits, consider adding delays between requests
 - Use Android context for some endpoints if web context fails
 
@@ -379,6 +399,14 @@ const safeToken = ensureToken(token, 'song')
 - Images in different qualities: `50x50`, `150x150`, `500x500`
 - Audio downloads in bitrates: `12kbps`, `48kbps`, `96kbps`, `160kbps`, `320kbps`
 - Download URLs are decrypted automatically using DES-ECB
+
+## Disclaimer
+
+This is an unofficial client and is not affiliated with or endorsed by JioSaavn.
+
+This library does not host, cache, or redistribute media. All data and URLs are fetched directly from JioSaavn’s publicly accessible endpoints.
+
+Usage and compliance with applicable terms are the responsibility of the end user.
 
 ## License
 

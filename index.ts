@@ -122,6 +122,129 @@ interface SearchAllResponse {
 }
 
 // ============================================================================
+// DATA TRANSFORMATION HELPERS
+// ============================================================================
+
+/**
+ * Transform a raw Song from API to include image and downloadLinks
+ * @internal
+ */
+const transformSong = (song: any): Song => {
+  if (!song) return song
+  
+  const transformed = { ...song }
+  
+  // Transform image URL to ImageLink array if needed
+  if (song.image && typeof song.image === 'string') {
+    transformed.image = createImageLinks(song.image)
+  } else if (!transformed.image) {
+    transformed.image = []
+  }
+  
+  // Transform encrypted media URL to downloadLinks if available
+  if (song.encryptedMediaUrl && !song.downloadLinks) {
+    transformed.downloadLinks = createDownloadLinks(song.encryptedMediaUrl)
+  }
+  
+  return transformed
+}
+
+/**
+ * Transform an array of songs to include image and downloadLinks
+ * @internal
+ */
+const transformSongs = (songs: any[]): Song[] => {
+  return songs?.map(transformSong) || []
+}
+
+/**
+ * Transform a raw Album from API to include image and transformed songs
+ * @internal
+ */
+const transformAlbum = (album: any): Album => {
+  if (!album) return album
+  
+  const transformed = { ...album }
+  
+  // Transform album image
+  if (album.image && typeof album.image === 'string') {
+    transformed.image = createImageLinks(album.image)
+  } else if (!transformed.image) {
+    transformed.image = []
+  }
+  
+  // Transform artist image if present
+  if (transformed.artist?.image && typeof transformed.artist.image === 'string') {
+    transformed.artist.image = createImageLinks(transformed.artist.image)
+  }
+  
+  // Transform all songs in album
+  if (album.songs && Array.isArray(album.songs)) {
+    transformed.songs = transformSongs(album.songs)
+  }
+  
+  return transformed
+}
+
+/**
+ * Transform a raw Artist from API to include image and transformed songs/albums
+ * @internal
+ */
+const transformArtist = (artist: any): Artist => {
+  if (!artist) return artist
+  
+  const transformed = { ...artist }
+  
+  // Transform artist image
+  if (artist.image && typeof artist.image === 'string') {
+    transformed.image = createImageLinks(artist.image)
+  } else if (!transformed.image) {
+    transformed.image = []
+  }
+  
+  // Transform top songs
+  if (artist.topSongs && Array.isArray(artist.topSongs)) {
+    transformed.topSongs = transformSongs(artist.topSongs)
+  }
+  
+  // Transform albums
+  if (artist.albums && Array.isArray(artist.albums)) {
+    transformed.albums = artist.albums.map(transformAlbum)
+  }
+  
+  return transformed
+}
+
+/**
+ * Transform a raw Playlist from API to include image and transformed songs
+ * @internal
+ */
+const transformPlaylist = (playlist: any): Playlist => {
+  if (!playlist) return playlist
+  
+  const transformed = { ...playlist }
+  
+  // Transform playlist image
+  if (playlist.image && typeof playlist.image === 'string') {
+    transformed.image = createImageLinks(playlist.image)
+  } else if (!transformed.image) {
+    transformed.image = []
+  }
+  
+  // Transform owner image if present
+  if (transformed.owner?.image && typeof transformed.owner.image === 'string') {
+    transformed.owner.image = createImageLinks(transformed.owner.image)
+  }
+  
+  // Transform all songs in playlist
+  if (playlist.songs && Array.isArray(playlist.songs)) {
+    transformed.songs = transformSongs(playlist.songs)
+  }
+  
+  return transformed
+}
+
+// ============================================================================
 // SEARCH FUNCTIONS
 // ============================================================================
 
@@ -156,11 +279,18 @@ export const searchAll = (query: string): Promise<ApiResponse<SearchAllResponse>
  *   console.log(song.duration); // Duration in seconds
  * });
  */
-export const searchSongs = ({ query, page = 0, limit = 10 }: SearchArgs): Promise<ApiResponse<PaginatedResponse<Song>>> =>
-  fetchFromSaavn<PaginatedResponse<Song>>({
+export const searchSongs = async ({ query, page = 0, limit = 10 }: SearchArgs): Promise<ApiResponse<PaginatedResponse<Song>>> => {
+  const response = await fetchFromSaavn<PaginatedResponse<Song>>({
     endpoint: endpoints.search.songs,
     params: { q: query, p: page, n: limit }
   })
+  
+  if (response.ok && response.data?.results) {
+    response.data.results = transformSongs(response.data.results)
+  }
+  
+  return response
+}
 
 /**
  * Search only albums
@@ -168,11 +298,18 @@ export const searchSongs = ({ query, page = 0, limit = 10 }: SearchArgs): Promis
  * @param args - Search arguments
  * @returns Promise with paginated Album results
  */
-export const searchAlbums = ({ query, page = 0, limit = 10 }: SearchArgs): Promise<ApiResponse<PaginatedResponse<Album>>> =>
-  fetchFromSaavn<PaginatedResponse<Album>>({
+export const searchAlbums = async ({ query, page = 0, limit = 10 }: SearchArgs): Promise<ApiResponse<PaginatedResponse<Album>>> => {
+  const response = await fetchFromSaavn<PaginatedResponse<Album>>({
     endpoint: endpoints.search.albums,
     params: { q: query, p: page, n: limit }
   })
+  
+  if (response.ok && response.data?.results) {
+    response.data.results = response.data.results.map(transformAlbum)
+  }
+  
+  return response
+}
 
 /**
  * Search only artists
@@ -180,11 +317,18 @@ export const searchAlbums = ({ query, page = 0, limit = 10 }: SearchArgs): Promi
  * @param args - Search arguments
  * @returns Promise with paginated Artist results
  */
-export const searchArtists = ({ query, page = 0, limit = 10 }: SearchArgs): Promise<ApiResponse<PaginatedResponse<Artist>>> =>
-  fetchFromSaavn<PaginatedResponse<Artist>>({
+export const searchArtists = async ({ query, page = 0, limit = 10 }: SearchArgs): Promise<ApiResponse<PaginatedResponse<Artist>>> => {
+  const response = await fetchFromSaavn<PaginatedResponse<Artist>>({
     endpoint: endpoints.search.artists,
     params: { q: query, p: page, n: limit }
   })
+  
+  if (response.ok && response.data?.results) {
+    response.data.results = response.data.results.map(transformArtist)
+  }
+  
+  return response
+}
 
 /**
  * Search only playlists
@@ -192,11 +336,18 @@ export const searchArtists = ({ query, page = 0, limit = 10 }: SearchArgs): Prom
  * @param args - Search arguments
  * @returns Promise with paginated Playlist results
  */
-export const searchPlaylists = ({ query, page = 0, limit = 10 }: SearchArgs): Promise<ApiResponse<PaginatedResponse<Playlist>>> =>
-  fetchFromSaavn<PaginatedResponse<Playlist>>({
+export const searchPlaylists = async ({ query, page = 0, limit = 10 }: SearchArgs): Promise<ApiResponse<PaginatedResponse<Playlist>>> => {
+  const response = await fetchFromSaavn<PaginatedResponse<Playlist>>({
     endpoint: endpoints.search.playlists,
     params: { q: query, p: page, n: limit }
   })
+  
+  if (response.ok && response.data?.results) {
+    response.data.results = response.data.results.map(transformPlaylist)
+  }
+  
+  return response
+}
 
 // ============================================================================
 // SONG FUNCTIONS
@@ -223,11 +374,18 @@ export const searchPlaylists = ({ query, page = 0, limit = 10 }: SearchArgs): Pr
  * const result = await getSongsById(['song-1', 'song-2', 'song-3']);
  * result.data.songs.forEach(song => console.log(song.title));
  */
-export const getSongsById = (ids: string | string[]): Promise<ApiResponse<SongDetailsResponse>> =>
-  fetchFromSaavn<SongDetailsResponse>({
+export const getSongsById = async (ids: string | string[]): Promise<ApiResponse<SongDetailsResponse>> => {
+  const response = await fetchFromSaavn<SongDetailsResponse>({
     endpoint: endpoints.songs.id,
     params: { pids: stringifyIds(ids) }
   })
+  
+  if (response.ok && response.data?.songs) {
+    response.data.songs = transformSongs(response.data.songs)
+  }
+  
+  return response
+}
 
 /**
  * Get song details from a JioSaavn URL
@@ -239,13 +397,19 @@ export const getSongsById = (ids: string | string[]): Promise<ApiResponse<SongDe
  * const result = await getSongByLink('https://www.jiosaavn.com/song/blinding-lights/...');
  * console.log(result.data.songs[0].title);
  */
-export const getSongByLink = (link: string): Promise<ApiResponse<SongDetailsResponse>> => {
+export const getSongByLink = async (link: string): Promise<ApiResponse<SongDetailsResponse>> => {
   const token = ensureToken(tokenExtractors.song(link), 'song')
 
-  return fetchFromSaavn<SongDetailsResponse>({
+  const response = await fetchFromSaavn<SongDetailsResponse>({
     endpoint: endpoints.songs.link,
     params: { token, type: 'song' }
   })
+  
+  if (response.ok && response.data?.songs) {
+    response.data.songs = transformSongs(response.data.songs)
+  }
+  
+  return response
 }
 
 /**
@@ -299,7 +463,7 @@ export const getSongSuggestions = async ({ songId, limit = 10 }: GetSongSuggesti
     .map((entry) => (entry && typeof entry === 'object' ? entry.song : undefined))
     .filter(Boolean) as Song[]
 
-  return suggestions.slice(0, limit)
+  return transformSongs(suggestions.slice(0, limit))
 }
 
 // ============================================================================
@@ -319,11 +483,18 @@ export const getSongSuggestions = async ({ songId, limit = 10 }: GetSongSuggesti
  * console.log(album.title, album.songCount);
  * album.songs?.forEach(song => console.log(song.title)); // Same Song objects as search
  */
-export const getAlbumById = (id: string): Promise<ApiResponse<AlbumResponse>> =>
-  fetchFromSaavn<AlbumResponse>({
+export const getAlbumById = async (id: string): Promise<ApiResponse<AlbumResponse>> => {
+  const response = await fetchFromSaavn<AlbumResponse>({
     endpoint: endpoints.albums.id,
     params: { albumid: id }
   })
+  
+  if (response.ok && response.data) {
+    response.data = transformAlbum(response.data)
+  }
+  
+  return response
+}
 
 /**
  * Get album details from a JioSaavn URL
@@ -331,13 +502,19 @@ export const getAlbumById = (id: string): Promise<ApiResponse<AlbumResponse>> =>
  * @param link - Full JioSaavn album URL
  * @returns Promise with Album object
  */
-export const getAlbumByLink = (link: string): Promise<ApiResponse<AlbumResponse>> => {
+export const getAlbumByLink = async (link: string): Promise<ApiResponse<AlbumResponse>> => {
   const token = ensureToken(tokenExtractors.album(link), 'album')
 
-  return fetchFromSaavn<AlbumResponse>({
+  const response = await fetchFromSaavn<AlbumResponse>({
     endpoint: endpoints.albums.link,
     params: { token, type: 'album' }
   })
+  
+  if (response.ok && response.data) {
+    response.data = transformAlbum(response.data)
+  }
+  
+  return response
 }
 
 // ============================================================================
@@ -362,15 +539,15 @@ export const getAlbumByLink = (link: string): Promise<ApiResponse<AlbumResponse>
  * const artist = result.data;
  * artist.topSongs?.forEach(song => console.log(song.title));
  */
-export const getArtistById = ({
+export const getArtistById = async ({
   id,
   page = 0,
   songCount = 10,
   albumCount = 10,
   sortBy = 'popularity',
   sortOrder = 'asc'
-}: GetArtistByIdArgs): Promise<ApiResponse<ArtistResponse>> =>
-  fetchFromSaavn<ArtistResponse>({
+}: GetArtistByIdArgs): Promise<ApiResponse<ArtistResponse>> => {
+  const response = await fetchFromSaavn<ArtistResponse>({
     endpoint: endpoints.artists.id,
     params: {
       artistId: id,
@@ -381,6 +558,13 @@ export const getArtistById = ({
       category: sortBy
     }
   })
+  
+  if (response.ok && response.data) {
+    response.data = transformArtist(response.data)
+  }
+  
+  return response
+}
 
 /**
  * Get artist details from a JioSaavn URL
@@ -388,7 +572,7 @@ export const getArtistById = ({
  * @param args - JioSaavn link and optional filtering parameters
  * @returns Promise with complete Artist object
  */
-export const getArtistByLink = ({
+export const getArtistByLink = async ({
   link,
   page = 0,
   songCount = 10,
@@ -398,7 +582,7 @@ export const getArtistByLink = ({
 }: GetArtistByLinkArgs): Promise<ApiResponse<ArtistResponse>> => {
   const token = ensureToken(tokenExtractors.artist(link), 'artist')
 
-  return fetchFromSaavn<ArtistResponse>({
+  const response = await fetchFromSaavn<ArtistResponse>({
     endpoint: endpoints.artists.link,
     params: {
       token,
@@ -410,6 +594,12 @@ export const getArtistByLink = ({
       category: sortBy
     }
   })
+  
+  if (response.ok && response.data) {
+    response.data = transformArtist(response.data)
+  }
+  
+  return response
 }
 
 /**
@@ -422,11 +612,18 @@ export const getArtistByLink = ({
  * const result = await getArtistSongs({ id: 'artist-id-123', page: 0 });
  * result.data.results.forEach(song => console.log(song.title));
  */
-export const getArtistSongs = ({ id, page = 0, sortBy = 'popularity', sortOrder = 'asc' }: GetArtistSongsArgs): Promise<ApiResponse<PaginatedResponse<Song>>> =>
-  fetchFromSaavn<PaginatedResponse<Song>>({
+export const getArtistSongs = async ({ id, page = 0, sortBy = 'popularity', sortOrder = 'asc' }: GetArtistSongsArgs): Promise<ApiResponse<PaginatedResponse<Song>>> => {
+  const response = await fetchFromSaavn<PaginatedResponse<Song>>({
     endpoint: endpoints.artists.songs,
     params: { artistId: id, page, sort_order: sortOrder, category: sortBy }
   })
+  
+  if (response.ok && response.data?.results) {
+    response.data.results = transformSongs(response.data.results)
+  }
+  
+  return response
+}
 
 /**
  * Get paginated list of albums by an artist
@@ -434,11 +631,18 @@ export const getArtistSongs = ({ id, page = 0, sortBy = 'popularity', sortOrder 
  * @param args - Artist ID and pagination parameters
  * @returns Promise with paginated Album results
  */
-export const getArtistAlbums = ({ id, page = 0, sortBy = 'popularity', sortOrder = 'asc' }: GetArtistAlbumsArgs): Promise<ApiResponse<PaginatedResponse<Album>>> =>
-  fetchFromSaavn<PaginatedResponse<Album>>({
+export const getArtistAlbums = async ({ id, page = 0, sortBy = 'popularity', sortOrder = 'asc' }: GetArtistAlbumsArgs): Promise<ApiResponse<PaginatedResponse<Album>>> => {
+  const response = await fetchFromSaavn<PaginatedResponse<Album>>({
     endpoint: endpoints.artists.albums,
     params: { artistId: id, page, sort_order: sortOrder, category: sortBy }
   })
+  
+  if (response.ok && response.data?.results) {
+    response.data.results = response.data.results.map(transformAlbum)
+  }
+  
+  return response
+}
 
 // ============================================================================
 // PLAYLIST FUNCTIONS
@@ -461,11 +665,18 @@ export const getArtistAlbums = ({ id, page = 0, sortBy = 'popularity', sortOrder
  *   console.log(song.downloadLinks); // Download links
  * });
  */
-export const getPlaylistById = ({ id, page = 0, limit = 10 }: GetPlaylistByIdArgs): Promise<ApiResponse<PlaylistResponse>> =>
-  fetchFromSaavn<PlaylistResponse>({
+export const getPlaylistById = async ({ id, page = 0, limit = 10 }: GetPlaylistByIdArgs): Promise<ApiResponse<PlaylistResponse>> => {
+  const response = await fetchFromSaavn<PlaylistResponse>({
     endpoint: endpoints.playlists.id,
     params: { listid: id, n: limit, p: page }
   })
+  
+  if (response.ok && response.data) {
+    response.data = transformPlaylist(response.data)
+  }
+  
+  return response
+}
 
 /**
  * Get playlist details from a JioSaavn URL
@@ -473,13 +684,19 @@ export const getPlaylistById = ({ id, page = 0, limit = 10 }: GetPlaylistByIdArg
  * @param args - JioSaavn link and optional pagination parameters
  * @returns Promise with complete Playlist object
  */
-export const getPlaylistByLink = ({ link, page = 0, limit = 10 }: GetPlaylistByLinkArgs): Promise<ApiResponse<PlaylistResponse>> => {
+export const getPlaylistByLink = async ({ link, page = 0, limit = 10 }: GetPlaylistByLinkArgs): Promise<ApiResponse<PlaylistResponse>> => {
   const token = ensureToken(tokenExtractors.playlist(link), 'playlist')
 
-  return fetchFromSaavn<PlaylistResponse>({
+  const response = await fetchFromSaavn<PlaylistResponse>({
     endpoint: endpoints.playlists.link,
     params: { token, n: limit, p: page, type: 'playlist' }
   })
+  
+  if (response.ok && response.data) {
+    response.data = transformPlaylist(response.data)
+  }
+  
+  return response
 }
 
 // ============================================================================
