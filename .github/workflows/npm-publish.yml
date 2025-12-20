@@ -2,6 +2,7 @@ name: Node.js Package
 
 on:
   push:
+    branches: [main]
   release:
     types: [created]
 
@@ -10,11 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      - uses: oven-sh/setup-bun@v1
         with:
-          node-version: 20
-      - run: npm ci
-      - run: npm test --if-present
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+      - run: bun test --if-present
 
   publish-npm:
     if: github.event_name == 'release'
@@ -22,11 +25,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org/
-      - run: npm ci
+
+      # 🔒 VERSION GUARD
+      - name: Ensure version is not already published
+        run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VERSION=$(node -p "require('./package.json').version")
+
+          echo "Checking $PKG_NAME@$PKG_VERSION"
+
+          if npm view "$PKG_NAME@$PKG_VERSION" version > /dev/null 2>&1; then
+            echo "::error::$PKG_NAME@$PKG_VERSION is already published. Bump version before releasing."
+            exit 1
+          fi
+
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
