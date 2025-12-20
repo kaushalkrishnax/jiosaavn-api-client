@@ -2,6 +2,10 @@
 
 TypeScript/JavaScript client for JioSaavn's native API. Direct access to songs, albums, artists, playlists, and search—no proxy server needed.
 
+[![npm](https://img.shields.io/npm/v/jiosaavn-api-client?logo=npm&style=for-the-badge)](https://www.npmjs.com/package/jiosaavn-api-client)
+[![downloads](https://img.shields.io/npm/dm/jiosaavn-api-client?style=for-the-badge))](https://www.npmjs.com/package/jiosaavn-api-client)
+[![license](https://img.shields.io/npm/l/jiosaavn-api-client?style=for-the-badge))](./LICENSE)
+
 ## Table of Contents
 - [Features](#features)
 - [Installation](#installation)
