@@ -1,6 +1,6 @@
-# JioSaavn API Client
+# JioSaavn API Client (v2)
 
-Pure-JS client for JioSaavn's native API. Works on Node, Bun, Cloudflare Workers, Vercel Edge, and Deno.
+Pure-JS client for JioSaavn's native API with normalized client models. Works on Node, Bun, Cloudflare Workers, Vercel Edge, and Deno.
 
 [![npm](https://img.shields.io/npm/v/jiosaavn-api-client?logo=npm&style=for-the-badge)](https://www.npmjs.com/package/jiosaavn-api-client)
 [![downloads](https://img.shields.io/npm/dm/jiosaavn-api-client?style=for-the-badge)](https://www.npmjs.com/package/jiosaavn-api-client)
@@ -8,6 +8,7 @@ Pure-JS client for JioSaavn's native API. Works on Node, Bun, Cloudflare Workers
 
 ## Table of Contents
 
+- [Breaking Changes (v2.0.0)](#breaking-changes-v200)
 - [Features](#features)
 - [Installation](#installation)
 - [Scope and Non-Goals](#scope-and-non-goals)
@@ -25,9 +26,9 @@ Pure-JS client for JioSaavn's native API. Works on Node, Bun, Cloudflare Workers
 
 - 🔍 **Search** - Songs, Albums, Artists, Playlists
 - 🎵 **Songs** - Get by ID(s), Link, or Suggestions
-- 💿 **Albums** - Get album details with all songs
+- 💿 **Albums** - Get album details with track listing
 - 🎤 **Artists** - Get artist info with top songs and albums
-- 📋 **Playlists** - Get playlist details with all songs in consistent Song format
+- 📋 **Playlists** - Get playlist details with track listing
 - 🖼️ **Image Links** - Multiple quality options (50x50, 150x150, 500x500)
 - 📥 **Download Links** - Multiple bitrates (12, 48, 96, 160, 320 kbps)
 - 🎙️ **Song Suggestions** - Get radio recommendations
@@ -35,11 +36,13 @@ Pure-JS client for JioSaavn's native API. Works on Node, Bun, Cloudflare Workers
 ## Scope and Non-Goals
 
 This library focuses on:
+
 - Typed access to JioSaavn metadata and media URLs
 - Consistent response structures across APIs
 - Cross-runtime compatibility (Node, Bun, Edge, Workers)
 
 This library does not aim to:
+
 - Replace the official JioSaavn application
 - Act as a streaming service
 - Provide guaranteed long-term API stability
@@ -54,234 +57,263 @@ bun add jiosaavn-api-client
 yarn add jiosaavn-api-client
 ```
 
+## Breaking Changes (v2.0.0)
+
+- Types are now split into `Raw` (internal) and `Models` (public). All public APIs return normalized `Models`.
+- `image` → `images: ImageSource[]`, `encrypted_media_url` → `downloadLinks: DownloadLink[]` (pre-decrypted).
+- Booleans normalized: `explicit_content` → `isExplicit`, `isRadioPresent` → `hasRadio`.
+- `type` → `entityType`.
+- Pagination unified via `Paginated<T>` with `total`, `page`, `limit`, `results`.
+- API results use `ApiResult<T>` (`{ success: true, data } | { success: false, message, code }`).
+- Both `JioSaavnClient` and standalone convenience functions are supported. Use `createClient()` to configure the default client used by the standalone functions.
+
 ## Quick Start
 
-### Search Songs
+### Create a client (recommended)
 
 ```typescript
-import { searchSongs } from "jiosaavn-api-client";
+import { JioSaavnClient } from "jiosaavn-api-client";
 
-const result = await searchSongs({ query: "blinding lights", limit: 10 });
-result.data.results.forEach((song) => {
-  console.log(song.title);
-  console.log(song.image); // ImageLink[] (normalized image variants)
-  console.log(song.duration); // Duration in seconds
+const client = new JioSaavnClient({
+  baseUrl: "https://www.jiosaavn.com/api.php", // optional override
+  timeoutMs: 8000, // optional
 });
 ```
 
-Note: `searchSongs` returns search results.  
-Use `getSongsById` to fetch fully hydrated `Song` objects with download links.
-
-### Get Song Details by ID
+### Search songs (previews)
 
 ```typescript
-import { getSongsById } from "jiosaavn-api-client";
+const songsResult = await client.searchSongs({
+  query: "blinding lights",
+  limit: 10,
+});
+if (!songsResult.success) throw new Error(songsResult.message);
 
-// Single song
-const result = await getSongsById("song-id-123");
-const song = result.data.songs[0];
-
-// Multiple songs
-const result = await getSongsById(["song-1", "song-2", "song-3"]);
-result.data.songs.forEach((song) => {
+songsResult.data.results.forEach((song) => {
   console.log(song.title);
-  console.log(song.image); // Image links in different qualities
-  console.log(song.downloadLinks); // Download links in different bitrates
+  console.log(song.images); // ImageSource[]
+  console.log(song.artistNames); // string[]
 });
 ```
 
-### Get Playlist with All Songs
+### Get full song objects by ID
 
 ```typescript
-import { getPlaylistById } from "jiosaavn-api-client";
+const full = await client.getSongsById({ ids: ["song-1", "song-2"] });
+if (!full.success) throw new Error(full.message);
 
-const result = await getPlaylistById({ id: "playlist-id-123", limit: 100 });
-const playlist = result.data;
+full.data.forEach((song) => {
+  console.log(song.title);
+  console.log(song.images); // ImageSource[]
+  console.log(song.downloadLinks); // DownloadLink[] (multiple bitrates)
+  console.log(song.artists.primary); // ArtistPreview[]
+});
+```
 
+### Get a playlist (song previews)
+
+```typescript
+const playlistResult = await client.getPlaylistById({
+  id: "playlist-id-123",
+  limit: 100,
+});
+if (!playlistResult.success) throw new Error(playlistResult.message);
+
+const playlist = playlistResult.data;
 console.log(playlist.title, playlist.songCount);
 playlist.songs?.forEach((song) => {
-  // Same Song object structure as searchSongs and getSongsById
-  console.log(song.title);
-  console.log(song.image); // Image links
-  console.log(song.downloadLinks); // Download links
+  console.log(song.title, song.artistNames.join(", "));
 });
 ```
 
-### Get Album with All Songs
+### Get an album
 
 ```typescript
-import { getAlbumById } from "jiosaavn-api-client";
+const albumResult = await client.getAlbumById({ id: "album-id-123" });
+if (!albumResult.success) throw new Error(albumResult.message);
 
-const result = await getAlbumById("album-id-123");
-const album = result.data;
-
-console.log(album.title, album.songCount);
-album.songs?.forEach((song) => {
-  console.log(song.title);
-  console.log(song.downloadLinks); // Ready for download
-});
+const album = albumResult.data;
+console.log(album.title, album.releaseYear);
+album.songs?.forEach((song) => console.log(song.title));
 ```
 
-### Get Artist Details with Top Songs and Albums
+### Get artist details
 
 ```typescript
-import { getArtistById } from "jiosaavn-api-client";
-
-const result = await getArtistById({
+const artistResult = await client.getArtistById({
   id: "artist-id-123",
-  songCount: 20,
-  albumCount: 10,
-  sortBy: "popularity",
-  sortOrder: "desc",
+  songCount: 10,
+  albumCount: 5,
 });
+if (!artistResult.success) throw new Error(artistResult.message);
 
-const artist = result.data;
+const artist = artistResult.data;
+console.log(artist.name, artist.hasRadio);
 artist.topSongs?.forEach((song) => console.log(song.title));
-artist.albums?.forEach((album) => console.log(album.title));
 ```
 
-### Get Song Suggestions
+### Song suggestions (radio)
 
 ```typescript
-import { getSongSuggestions } from "jiosaavn-api-client";
+const suggest = await client.getSongSuggestions({
+  id: "song-id-123",
+  limit: 20,
+});
+if (!suggest.success) throw new Error(suggest.message);
 
-const songs = await getSongSuggestions({ songId: "song-id-123", limit: 20 });
-songs.forEach((song) => console.log(song.title)); // Similar songs
+suggest.data.forEach((song) => console.log(song.title));
 ```
 
 ## API Types
 
-All responses are fully typed. Here are the main types:
-
-### Song
+Public models live under `Models`:
 
 ```typescript
-interface Song {
-  id: string;
-  title: string;
-  artist: { id: string; name: string; image?: ImageLink[] };
-  artists?: Artist[];
-  album: { id: string; name: string };
-  image: ImageLink[]; // Multiple quality options
-  duration: number; // In seconds
-  downloadLinks?: DownloadLink[]; // Multiple bitrates
-  encryptedMediaUrl?: string;
-  [key: string]: any;
-}
-```
+type ImageSource = { resolution: string; url: string };
+type DownloadLink = { bitrate: string; url: string };
 
-### Album
-
-```typescript
-interface Album {
-  id: string;
-  title: string;
-  artist: { id: string; name: string };
-  image: ImageLink[];
-  songs?: Song[]; // Same Song structure
-  songCount?: number;
-  [key: string]: any;
-}
-```
-
-### Artist
-
-```typescript
-interface Artist {
+type ArtistPreview = {
   id: string;
   name: string;
-  image: ImageLink[];
-  topSongs?: Song[]; // Same Song structure
-  albums?: Album[]; // Same Album structure
-  [key: string]: any;
-}
-```
+  images: ImageSource[];
+  url: string;
+};
+type ArtistsGroup = {
+  primary: ArtistPreview[];
+  featured?: ArtistPreview[];
+  all?: ArtistPreview[];
+};
 
-### Playlist
-
-```typescript
-interface Playlist {
+type Song = {
   id: string;
   title: string;
-  image: ImageLink[];
-  songs?: Song[]; // Same Song structure
-  songCount: number;
-  owner?: { name: string };
-  [key: string]: any;
-}
-```
-
-### ImageLink
-
-```typescript
-interface ImageLink {
-  quality: string; // '50x50', '150x150', '500x500'
+  entityType: string; // "song"
+  releaseYear?: number | undefined;
+  releaseDateISO?: string | undefined;
+  durationSeconds?: number | undefined;
+  label?: string | undefined;
+  isExplicit: boolean;
+  playCount?: number | undefined;
+  language: string;
+  hasLyrics: boolean;
+  lyricsId?: string | undefined;
   url: string;
-}
-```
+  album: {
+    id: string | undefined;
+    title: string | undefined;
+    url: string | undefined;
+  };
+  artists: ArtistsGroup;
+  images: ImageSource[];
+  downloadLinks: DownloadLink[];
+};
 
-### DownloadLink
-
-```typescript
-interface DownloadLink {
-  quality: string; // '12kbps', '48kbps', '96kbps', '160kbps', '320kbps'
+type Album = {
+  id: string;
+  title: string;
+  description?: string | undefined;
+  releaseYear?: number | undefined;
+  entityType: string; // "album"
+  playCount?: number | undefined;
+  language: string;
+  isExplicit: boolean;
+  artists: ArtistsGroup;
+  songCount?: number | undefined;
   url: string;
-}
-```
+  images: ImageSource[];
+  songs?: SongPreview[] | undefined;
+};
 
-### API Response
+type Artist = {
+  id: string;
+  name: string;
+  url: string;
+  entityType: string; // "artist"
+  images: ImageSource[];
+  followerCount?: number | undefined;
+  fanCount?: number | undefined;
+  isVerified?: boolean | undefined;
+  primaryLanguage?: string | undefined;
+  primaryContentType?: string | undefined;
+  dateOfBirthISO?: string | undefined;
+  hasRadio?: boolean | undefined;
+  availableLanguages: string[];
+  topSongs?: SongPreview[] | undefined;
+  topAlbums?: AlbumPreview[] | undefined;
+  singles?: SongPreview[] | undefined;
+  similarArtists?: ArtistPreview[] | undefined;
+};
 
-All functions return:
+type Playlist = {
+  id: string;
+  title: string;
+  description?: string | undefined;
+  releaseYear?: number | undefined;
+  entityType: string; // "playlist"
+  playCount?: number | undefined;
+  language: string;
+  isExplicit: boolean;
+  songCount?: number | undefined;
+  url: string;
+  images: ImageSource[];
+  songs?: SongPreview[] | undefined;
+  artists?: ArtistPreview[] | undefined;
+};
 
-```typescript
-interface ApiResponse<T> {
-  data: T;
-  ok: boolean;
-  status: number;
-}
+type Paginated<T> = {
+  total: number;
+  page: number;
+  limit: number;
+  results: T[];
+};
+type ApiResult<T> =
+  | { success: true; data: T }
+  | { success: false; message: string; code: string };
 ```
 
 ## API Reference
 
+This package exposes both:
+
+- `JioSaavnClient` (recommended) for instance-specific configuration
+- Standalone convenience functions that use an internal default client (configure via `createClient()`)
+
 ### Search Functions
 
-- `searchAll(query)` - Search all types
-- `searchSongs(args)` - Search songs: `{ query, page?, limit? }`
-- `searchAlbums(args)` - Search albums: `{ query, page?, limit? }`
-- `searchArtists(args)` - Search artists: `{ query, page?, limit? }`
-- `searchPlaylists(args)` - Search playlists: `{ query, page?, limit? }`
+- `searchAll(query)` - Search all types (previews)
+- `searchSongs(args)` - Song previews: `{ query, page?, limit? }`
+- `searchAlbums(args)` - Album previews: `{ query, page?, limit? }`
+- `searchArtists(args)` - Artist previews: `{ query, page?, limit? }`
+- `searchPlaylists(args)` - Playlist previews: `{ query, page?, limit? }`
 
 ### Song Functions
 
-- `getSongsById(ids)` - Get songs by ID(s): single string or array
-- `getSongByLink(link)` - Get song from JioSaavn URL
-- `getSongSuggestions(args)` - Get recommendations: `{ songId, limit? }`
+- `getSongsById({ ids })` - Full songs (downloadLinks, images, artists)
+- `getSongByLink({ link })`
+- `getSongSuggestions({ id, limit? })` - Radio suggestions
 
 ### Album Functions
 
-- `getAlbumById(id)` - Get album by ID
-- `getAlbumByLink(link)` - Get album from JioSaavn URL
+- `getAlbumById({ id })`
+- `getAlbumByLink({ link })`
 
 ### Artist Functions
 
-- `getArtistById(args)` - Get artist: `{ id, page?, songCount?, albumCount?, sortBy?, sortOrder? }`
-- `getArtistByLink(args)` - Get artist from JioSaavn URL
-- `getArtistSongs(args)` - Get paginated artist songs: `{ id, page?, sortBy?, sortOrder? }`
-- `getArtistAlbums(args)` - Get paginated artist albums: `{ id, page?, sortBy?, sortOrder? }`
+- `getArtistById({ id, page?, songCount?, albumCount?, sortBy?, sortOrder? })`
+- `getArtistByLink({ link, ...same })`
+- `getArtistSongs({ id, page?, sortBy?, sortOrder? })`
+- `getArtistAlbums({ id, page?, sortBy?, sortOrder? })`
 
 ### Playlist Functions
 
-- `getPlaylistById(args)` - Get playlist: `{ id, page?, limit? }`
-- `getPlaylistByLink(args)` - Get playlist from JioSaavn URL
+- `getPlaylistById({ id, page?, limit? })`
+- `getPlaylistByLink({ link, page?, limit? })`
 
 ### Utility Functions
 
-- `createImageLinks(url)` - Create image URLs in different qualities
-- `createDownloadLinks(encryptedUrl)` - Decrypt and create download URLs
-- `pickUserAgent(userAgents?)` - Pick random User-Agent for requests
-- `stringifyIds(ids)` - Convert single or multiple IDs to comma-separated string
-- `ensureToken(token, kind)` - Ensure token exists or throw error
-- `tokenExtractors` - Extract tokens from JioSaavn URLs
+- Configure the default client used by convenience functions: `createClient({ baseUrl?, fetch?, timeoutMs? })`
+- Low-level fetch: `fetchFromSaavn` via `jiosaavn-api-client/fetch`
+- Helpers: `pickUserAgent`, `retry`, `delay`, `extractToken`, etc via `jiosaavn-api-client/utils`
 
 ## Advanced Usage
 
@@ -330,32 +362,27 @@ These helpers are exposed for advanced use cases and internal composition.
 They are not considered part of the stable public API.
 
 ```typescript
-import { 
-  createDownloadLinks, 
-  createImageLinks, 
+import {
   pickUserAgent,
-  stringifyIds,
-  ensureToken,
-  tokenExtractors 
-} from 'jiosaavn-api-client'
-
-// Create download links from encrypted URL
-const downloadLinks = createDownloadLinks(encryptedMediaUrl)
-
-// Create image URLs in different qualities
-const imageUrls = createImageLinks(baseImageUrl)
+  retry,
+  delay,
+  extractToken,
+  buildQueryString,
+} from "jiosaavn-api-client/utils";
 
 // Pick a random user agent
-const ua = pickUserAgent()
+const ua = pickUserAgent();
 
-// Convert IDs to string
-const idString = stringifyIds(['id1', 'id2', 'id3']) // 'id1,id2,id3'
+// Extract an entity token from a JioSaavn URL (returns undefined if not matched)
+const token = extractToken(songUrl, "song");
 
-// Extract token from URL
-const token = tokenExtractors.song(songUrl)
+// Build a query string
+const qs = buildQueryString({ pids: "id1,id2", ctx: "web6dot0" });
 
-// Ensure token exists
-const safeToken = ensureToken(token, 'song')
+// Retry a request with backoff
+await retry(async () => {
+  await delay(250);
+});
 ```
 
 ## Compatibility
@@ -370,32 +397,36 @@ const safeToken = ensureToken(token, 'song')
 ## Notes
 
 ### Response Structure
-- All functions return `ApiResponse<T>` with `data`, `ok`, and `status` fields
-- Check `response.ok` to determine if the request was successful
-- The `data` field contains the actual response from JioSaavn API
+
+- High-level client APIs return `ApiResult<T>` (`success: true/false`)
+- Low-level `fetchFromSaavn` returns `{ data, ok, status }` (useful for advanced / raw API calls)
 
 ### Song Objects
-- Songs returned from any function have a consistent structure with `image` (array of `ImageLink`) and optional `downloadLinks` (array of `DownloadLink`)
-- Use `createDownloadLinks()` if `downloadLinks` is not present but `encryptedMediaUrl` is available
-- Use `createImageLinks()` to generate image URLs in different qualities
+
+- Normalized songs include `images: ImageSource[]` and `downloadLinks: DownloadLink[]`
+- For previews (search results / album / playlist listings), you get `SongPreview` objects (lighter payload)
 
 ### Pagination
+
 - Default `page` is 0 (first page)
 - Default `limit` is 10 results per page
-- Check `total` in `PaginatedResponse` to know total available results
+- Check `total` in `Paginated<T>` to know total available results
 
 ### Error Handling
-- URL token extraction functions throw errors if token cannot be extracted from URL
-- Song suggestions may throw errors if station creation fails
-- Always wrap API calls in try-catch for proper error handling
+
+- High-level APIs return failures as `ApiResult` (no throwing on expected API failures)
+- If you want structured error info, use `code: ErrorCode` in the failure object
+- Low-level fetch helpers may still throw for network / JSON parsing issues
 
 ### Rate Limiting
+
 - The client supports User-Agent rotation to reduce the risk of request throttling.
 - This does not guarantee immunity from upstream rate limits.
 - If you hit rate limits, consider adding delays between requests
 - Use Android context for some endpoints if web context fails
 
 ### Image & Download URLs
+
 - Images in different qualities: `50x50`, `150x150`, `500x500`
 - Audio downloads in bitrates: `12kbps`, `48kbps`, `96kbps`, `160kbps`, `320kbps`
 - Download URLs are decrypted automatically using DES-ECB

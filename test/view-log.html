@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JioSaavn API Check Log Viewer Pro</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+      background: linear-gradient(135deg, #1e1e1e 0%, #2d2d30 100%);
+      color: #d4d4d4;
+      padding: 20px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      background: #252526;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    h1 {
+      color: #4ec9b0;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 28px;
+      padding: 24px;
+      border: 2px solid #4ec9b0;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(78, 201, 176, 0.1) 0%, rgba(78, 201, 176, 0.05) 100%);
+      text-shadow: 0 2px 4px rgba(78, 201, 176, 0.3);
+      animation: glow 3s ease-in-out infinite;
+    }
+
+    @keyframes glow {
+
+      0%,
+      100% {
+        box-shadow: 0 0 10px rgba(78, 201, 176, 0.2);
+      }
+
+      50% {
+        box-shadow: 0 0 20px rgba(78, 201, 176, 0.4);
+      }
+    }
+
+    .file-input-section {
+      margin-bottom: 30px;
+      padding: 30px;
+      background: #1e1e1e;
+      border-radius: 12px;
+      text-align: center;
+      border: 2px dashed #4ec9b0;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .file-input-section.drag-over {
+      background: rgba(78, 201, 176, 0.1);
+      border-color: #dcdcaa;
+      transform: scale(1.02);
+    }
+
+    .file-input-section label {
+      display: inline-block;
+      padding: 14px 32px;
+      background: linear-gradient(135deg, #0e639c 0%, #1177bb 100%);
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+      font-size: 15px;
+      box-shadow: 0 4px 12px rgba(14, 99, 156, 0.3);
+    }
+
+    .file-input-section label:hover {
+      background: linear-gradient(135deg, #1177bb 0%, #1a8acc 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(14, 99, 156, 0.4);
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    .info {
+      color: #608b4e;
+      font-style: italic;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+      padding: 20px;
+      background: #1e1e1e;
+      border-radius: 12px;
+      border-left: 4px solid #4ec9b0;
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .stat-label {
+      color: #9cdcfe;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stat-value {
+      color: #4ec9b0;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .controls {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 15px;
+      background: #1e1e1e;
+      border-radius: 8px;
+    }
+
+    .control-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .control-divider {
+      width: 1px;
+      height: 30px;
+      background: #3e3e42;
+      margin: 0 5px;
+    }
+
+    button {
+      padding: 10px 18px;
+      background: linear-gradient(135deg, #0e639c 0%, #1177bb 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.3s;
+      box-shadow: 0 2px 8px rgba(14, 99, 156, 0.2);
+    }
+
+    button:hover {
+      background: linear-gradient(135deg, #1177bb 0%, #1a8acc 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(14, 99, 156, 0.3);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 250px;
+      padding: 10px 16px;
+      background: #1e1e1e;
+      border: 2px solid #3e3e42;
+      border-radius: 6px;
+      color: #d4d4d4;
+      font-family: inherit;
+      font-size: 13px;
+      transition: all 0.3s;
+    }
+
+    .search-box:focus {
+      outline: none;
+      border-color: #4ec9b0;
+      box-shadow: 0 0 0 3px rgba(78, 201, 176, 0.1);
+    }
+
+    .filter-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .filter-btn {
+      padding: 8px 14px;
+      font-size: 12px;
+      opacity: 0.7;
+    }
+
+    .filter-btn.active {
+      opacity: 1;
+      background: linear-gradient(135deg, #4ec9b0 0%, #5ed9bf 100%);
+    }
+
+    .log-content {
+      background: #1e1e1e;
+      padding: 25px;
+      border-radius: 12px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 13px;
+      overflow-x: auto;
+      max-height: 70vh;
+      overflow-y: auto;
+      border: 1px solid #3e3e42;
+      position: relative;
+    }
+
+    .log-entry {
+      margin-bottom: 15px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 6px;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .log-entry:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-left-color: #4ec9b0;
+    }
+
+    .log-entry.highlight {
+      background: rgba(220, 220, 170, 0.1);
+      border-left-color: #dcdcaa;
+      animation: highlight-pulse 1s ease-in-out;
+    }
+
+    @keyframes highlight-pulse {
+
+      0%,
+      100% {
+        background: rgba(220, 220, 170, 0.1);
+      }
+
+      50% {
+        background: rgba(220, 220, 170, 0.2);
+      }
+    }
+
+    /* Syntax highlighting */
+    .header {
+      color: #4ec9b0;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .section-divider {
+      color: #4ec9b0;
+      font-weight: bold;
+      margin: 20px 0;
+      padding: 10px;
+      background: rgba(78, 201, 176, 0.05);
+      border-radius: 6px;
+    }
+
+    .function-name {
+      color: #c586c0;
+      font-weight: bold;
+    }
+
+    .key {
+      color: #9cdcfe;
+    }
+
+    .string {
+      color: #ce9178;
+    }
+
+    .number {
+      color: #b5cea8;
+    }
+
+    .boolean {
+      color: #569cd6;
+    }
+
+    .null {
+      color: #569cd6;
+    }
+
+    .request-label {
+      color: #dcdcaa;
+      font-weight: bold;
+    }
+
+    .response-label {
+      color: #4ec9b0;
+      font-weight: bold;
+    }
+
+    .error {
+      color: #f48771;
+      font-weight: bold;
+    }
+
+    .success {
+      color: #4ec9b0;
+      font-weight: bold;
+    }
+
+    /* JSON Tree Styles */
+    .json-tree {
+      font-family: inherit;
+      font-size: 13px;
+      line-height: 1.6;
+      margin: 10px 0;
+    }
+
+    .json-node {
+      margin-left: 20px;
+      position: relative;
+    }
+
+    .json-node::before {
+      content: '';
+      position: absolute;
+      left: -10px;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: rgba(78, 201, 176, 0.2);
+    }
+
+    .json-key {
+      color: #9cdcfe;
+      font-weight: 600;
+    }
+
+    .json-string {
+      color: #ce9178;
+    }
+
+    .json-number {
+      color: #b5cea8;
+    }
+
+    .json-boolean,
+    .json-null {
+      color: #569cd6;
+      font-weight: 600;
+    }
+
+    .json-toggle {
+      cursor: pointer;
+      color: #c586c0;
+      user-select: none;
+      margin-right: 8px;
+      display: inline-block;
+      width: 16px;
+      transition: transform 0.2s;
+      font-weight: bold;
+    }
+
+    .json-collapsed>div:first-child .json-toggle {
+      transform: rotate(-90deg);
+    }
+
+    .json-collapsed>.json-children {
+      display: none;
+    }
+
+    .json-preview {
+      color: #808080;
+      font-style: italic;
+      margin-left: 8px;
+    }
+
+    .json-children {
+      margin-top: 5px;
+    }
+
+    /* Copy button */
+    .copy-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 6px 12px;
+      font-size: 11px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .log-content:hover .copy-btn {
+      opacity: 1;
+    }
+
+    /* Loading spinner */
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #4ec9b0;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1e1e1e;
+      border-radius: 6px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, #4ec9b0 0%, #3ea88f 100%);
+      border-radius: 6px;
+      border: 2px solid #1e1e1e;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(135deg, #5ed9bf 0%, #4ec9b0 100%);
+    }
+
+    /* Theme toggle */
+    .theme-toggle {
+      background: linear-gradient(135deg, #c586c0 0%, #d69cd6 100%);
+    }
+
+    .theme-toggle:hover {
+      background: linear-gradient(135deg, #d69cd6 0%, #e0ace0 100%);
+    }
+
+    /* Tooltips */
+    [data-tooltip] {
+      position: relative;
+    }
+
+    [data-tooltip]::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      padding: 6px 12px;
+      background: #3e3e42;
+      color: #d4d4d4;
+      border-radius: 6px;
+      font-size: 11px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 1000;
+    }
+
+    [data-tooltip]:hover::after {
+      opacity: 1;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .container {
+        padding: 15px;
+      }
+
+      h1 {
+        font-size: 20px;
+        padding: 16px;
+      }
+
+      .controls {
+        flex-direction: column;
+      }
+
+      .control-divider {
+        width: 100%;
+        height: 1px;
+        margin: 5px 0;
+      }
+
+      .stats-bar {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #808080;
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    .empty-state-text {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🎵 JioSaavn API Check Log Viewer Pro</h1>
+
+    <div class="file-input-section" id="dropZone">
+      <label for="fileInput">
+        📁 Select check.log file
+        <input type="file" id="fileInput" accept=".log,.txt">
+      </label>
+      <p class="info">Or drag and drop your log file here • Supports .log and .txt files</p>
+    </div>
+
+    <div class="stats-bar" id="statsBar" style="display: none;">
+      <div class="stat-item">
+        <span class="stat-label">File Size</span>
+        <span class="stat-value" id="fileSize">0 KB</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Lines</span>
+        <span class="stat-value" id="lineCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">JSON Objects</span>
+        <span class="stat-value" id="jsonCount">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Last Modified</span>
+        <span class="stat-value" id="lastModified">-</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <button onclick="increaseFontSize()" data-tooltip="Increase font size">A+</button>
+        <button onclick="decreaseFontSize()" data-tooltip="Decrease font size">A-</button>
+        <button onclick="resetFontSize()" data-tooltip="Reset font size">Reset</button>
+      </div>
+
+      <div class="control-divider"></div>
+
+      <div class="control-group">
+        <button onclick="toggleWrap()" data-tooltip="Toggle text wrapping">Wrap</button>
+        <button onclick="expandAll()" data-tooltip="Expand all JSON">Expand All</button>
+        <button onclick="collapseAll()" data-tooltip="Collapse all JSON">Collapse All</button>
+      </div>
+
+      <div class="control-divider"></div>
+
+      <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search in logs..." onkeyup="searchLogs()">
+
+      <div class="control-divider"></div>
+
+      <div class="control-group">
+        <button onclick="scrollToTop()" data-tooltip="Scroll to top">↑ Top</button>
+        <button onclick="scrollToBottom()" data-tooltip="Scroll to bottom">↓ Bottom</button>
+        <button onclick="copyToClipboard()" data-tooltip="Copy all content">📋 Copy</button>
+        <button onclick="downloadLog()" data-tooltip="Download processed log">💾 Save</button>
+      </div>
+    </div>
+
+    <div class="log-content" id="logContent">
+      <div class="empty-state">
+        <div class="empty-state-icon">📄</div>
+        <div class="empty-state-text">No log file loaded</div>
+        <div class="info">Select or drag a log file to get started</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const logContent = document.getElementById('logContent');
+    const searchBox = document.getElementById('searchBox');
+    const dropZone = document.getElementById('dropZone');
+    const statsBar = document.getElementById('statsBar');
+
+    let currentFontSize = 13;
+    let currentLogText = '';
+    let currentFileName = '';
+    let jsonObjects = [];
+
+    fileInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      loadFile(file);
+    });
+
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('drag-over');
+    });
+
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file && (file.name.endsWith('.log') || file.name.endsWith('.txt'))) {
+        loadFile(file);
+      }
+    });
+
+    function loadFile(file) {
+      currentFileName = file.name;
+      const reader = new FileReader();
+
+      reader.onload = e => {
+        currentLogText = e.target.result;
+        updateStats(file);
+        renderLog(currentLogText);
+      };
+
+      reader.readAsText(file);
+    }
+
+    function updateStats(file) {
+      statsBar.style.display = 'grid';
+
+      const sizeKB = (file.size / 1024).toFixed(2);
+      document.getElementById('fileSize').textContent = sizeKB + ' KB';
+
+      const lines = currentLogText.split('\n').length;
+      document.getElementById('lineCount').textContent = lines.toLocaleString();
+
+      const date = new Date(file.lastModified);
+      document.getElementById('lastModified').textContent = date.toLocaleDateString();
+    }
+
+    function renderLog(text) {
+      logContent.innerHTML = '';
+      jsonObjects = [];
+      const blocks = splitLog(text);
+
+      blocks.forEach((block, index) => {
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.dataset.index = index;
+
+        if (block.type === 'json') {
+          try {
+            const obj = JSON.parse(block.content);
+            jsonObjects.push(obj);
+            entry.appendChild(renderJsonTree(obj));
+          } catch {
+            entry.appendChild(renderText(block.content));
+          }
+        } else {
+          entry.appendChild(renderText(block.content));
+        }
+
+        logContent.appendChild(entry);
+      });
+
+      document.getElementById('jsonCount').textContent = jsonObjects.length;
+    }
+
+    function splitLog(text) {
+      const blocks = [];
+      let buffer = '';
+      let depth = 0;
+      let inJson = false;
+
+      for (const char of text) {
+        if (char === '{') {
+          if (depth === 0 && buffer.trim()) {
+            blocks.push({ type: 'text', content: buffer });
+            buffer = '';
+          }
+          depth++;
+          inJson = true;
+        }
+
+        buffer += char;
+
+        if (char === '}') {
+          depth--;
+          if (depth === 0 && inJson) {
+            blocks.push({ type: 'json', content: buffer });
+            buffer = '';
+            inJson = false;
+          }
+        }
+      }
+
+      if (buffer.trim()) blocks.push({ type: 'text', content: buffer });
+      return blocks;
+    }
+
+    function renderText(text) {
+      const pre = document.createElement('pre');
+      pre.style.margin = '0';
+      pre.textContent = text;
+      return pre;
+    }
+
+    function renderJsonTree(value) {
+      const container = document.createElement('div');
+      container.className = 'json-tree';
+      container.appendChild(renderNode(value));
+      return container;
+    }
+
+    function renderNode(value, key = null, level = 0) {
+      const node = document.createElement('div');
+      node.className = 'json-node';
+
+      const header = document.createElement('div');
+      header.style.display = 'flex';
+      header.style.alignItems = 'center';
+
+      if (typeof value === 'object' && value !== null) {
+        const toggle = document.createElement('span');
+        toggle.textContent = '▼';
+        toggle.className = 'json-toggle';
+        toggle.onclick = (e) => {
+          e.stopPropagation();
+          node.classList.toggle('json-collapsed');
+        };
+        header.appendChild(toggle);
+
+        if (level > 2) {
+          node.classList.add('json-collapsed');
+        }
+      } else {
+        header.appendChild(document.createTextNode('   '));
+      }
+
+      if (key !== null) {
+        const k = document.createElement('span');
+        k.className = 'json-key';
+        k.textContent = `"${key}"`;
+        header.appendChild(k);
+        header.appendChild(document.createTextNode(': '));
+      }
+
+      header.appendChild(renderValue(value));
+      node.appendChild(header);
+
+      if (typeof value === 'object' && value !== null) {
+        const children = document.createElement('div');
+        children.className = 'json-children';
+
+        const entries = Array.isArray(value)
+          ? value.map((v, i) => [i, v])
+          : Object.entries(value);
+
+        entries.forEach(([k, v]) => {
+          children.appendChild(renderNode(v, k, level + 1));
+        });
+
+        node.appendChild(children);
+      }
+
+      return node;
+    }
+
+    function renderValue(value) {
+      const span = document.createElement('span');
+
+      if (typeof value === 'string') {
+        span.className = 'json-string';
+        const truncated = value.length > 100 ? value.substring(0, 100) + '...' : value;
+        span.textContent = `"${truncated}"`;
+        if (value.length > 100) {
+          span.title = value;
+        }
+      } else if (typeof value === 'number') {
+        span.className = 'json-number';
+        span.textContent = value;
+      } else if (typeof value === 'boolean') {
+        span.className = 'json-boolean';
+        span.textContent = value;
+      } else if (value === null) {
+        span.className = 'json-null';
+        span.textContent = 'null';
+      } else if (Array.isArray(value)) {
+        span.className = 'json-preview';
+        span.textContent = `Array(${value.length})`;
+      } else {
+        const keys = Object.keys(value).length;
+        span.className = 'json-preview';
+        span.textContent = `{${keys} ${keys === 1 ? 'key' : 'keys'}}`;
+      }
+
+      return span;
+    }
+
+    /* Control Functions */
+
+    function increaseFontSize() {
+      currentFontSize += 2;
+      logContent.style.fontSize = currentFontSize + 'px';
+    }
+
+    function decreaseFontSize() {
+      if (currentFontSize > 8) {
+        currentFontSize -= 2;
+        logContent.style.fontSize = currentFontSize + 'px';
+      }
+    }
+
+    function resetFontSize() {
+      currentFontSize = 13;
+      logContent.style.fontSize = currentFontSize + 'px';
+    }
+
+    function toggleWrap() {
+      logContent.style.whiteSpace =
+        logContent.style.whiteSpace === 'pre' ? 'pre-wrap' : 'pre';
+    }
+
+    function expandAll() {
+      document.querySelectorAll('.json-node.json-collapsed').forEach(node => {
+        node.classList.remove('json-collapsed');
+      });
+    }
+
+    function collapseAll() {
+      document.querySelectorAll('.json-node').forEach(node => {
+        if (node.querySelector('.json-children')) {
+          node.classList.add('json-collapsed');
+        }
+      });
+    }
+
+    function scrollToTop() {
+      logContent.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function scrollToBottom() {
+      logContent.scrollTo({ top: logContent.scrollHeight, behavior: 'smooth' });
+    }
+
+    function searchLogs() {
+      const query = searchBox.value.toLowerCase();
+      const entries = document.querySelectorAll('.log-entry');
+
+      entries.forEach(entry => {
+        const text = entry.textContent.toLowerCase();
+        if (query && text.includes(query)) {
+          entry.classList.add('highlight');
+          entry.style.display = 'block';
+        } else if (query) {
+          entry.classList.remove('highlight');
+          entry.style.display = 'none';
+        } else {
+          entry.classList.remove('highlight');
+          entry.style.display = 'block';
+        }
+      });
+    }
+
+    async function copyToClipboard() {
+      try {
+        await navigator.clipboard.writeText(currentLogText);
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        btn.style.background = 'linear-gradient(135deg, #4ec9b0 0%, #5ed9bf 100%)';
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.style.background = '';
+        }, 2000);
+      } catch (err) {
+        alert('Failed to copy to clipboard');
+      }
+    }
+
+    function downloadLog() {
+      const blob = new Blob([currentLogText], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = currentFileName || 'processed-log.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    /* Keyboard Shortcuts */
+    document.addEventListener('keydown', e => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case 'f':
+            e.preventDefault();
+            searchBox.focus();
+            break;
+          case '=':
+          case '+':
+            e.preventDefault();
+            increaseFontSize();
+            break;
+          case '-':
+            e.preventDefault();
+            decreaseFontSize();
+            break;
+        }
+      }
+    });
+  </script>
+</body>
+
+</html>

@@ -1,27 +1,33 @@
-import { Endpoints, type EndpointValue } from './endpoints.js'
-import { pickUserAgent } from './utils.js'
+import { Endpoints, type EndpointValue } from "./endpoints.js";
+import { pickUserAgent } from "./utils.js";
 
 /**
  * API context/environment to use for requests
  * - 'web6dot0': Web API (default, more stable)
  * - 'android': Android app API (may have different rate limits)
  */
-export type ApiContext = 'web6dot0' | 'android'
+export type ApiContext = "web6dot0" | "android";
 
 /**
  * Parameters for making an API request to JioSaavn
  */
 export interface FetchParams {
   /** API endpoint to call (e.g., 'song.getDetails') */
-  endpoint: EndpointValue
+  endpoint: EndpointValue;
   /** Query parameters for the API endpoint */
-  params?: Record<string, string | number | boolean>
+  params?: Record<string, string | number | boolean>;
   /** API context to use (default: 'web6dot0') */
-  context?: ApiContext
+  context?: ApiContext;
   /** Custom HTTP headers to include in request */
-  headers?: Record<string, string>
+  headers?: Record<string, string>;
   /** Custom User-Agent strings to rotate from (optional) */
-  userAgents?: string[]
+  userAgents?: string[];
+  /** Override base URL (advanced, defaults to JioSaavn API) */
+  baseUrl?: string;
+  /** Custom fetch implementation (e.g., for environments without global fetch) */
+  fetchImpl?: typeof fetch;
+  /** Optional timeout in milliseconds */
+  timeoutMs?: number;
 }
 
 /**
@@ -30,18 +36,18 @@ export interface FetchParams {
  */
 export interface FetchResponse<T> {
   /** The actual response data from JioSaavn API */
-  data: T
+  data: T;
   /** Whether the HTTP request was successful (2xx status) */
-  ok: boolean
+  ok: boolean;
   /** HTTP status code returned by the server */
-  status: number
+  status: number;
 }
 
 /**
  * JioSaavn API base URL
  * @internal
  */
-const BASE_URL = 'https://www.jiosaavn.com/api.php'
+const BASE_URL = "https://www.jiosaavn.com/api.php";
 
 /**
  * Makes a request to JioSaavn's API with proper parameter encoding and headers
@@ -79,39 +85,67 @@ const BASE_URL = 'https://www.jiosaavn.com/api.php'
 export const fetchFromSaavn = async <T = unknown>({
   endpoint,
   params = {},
-  context = 'web6dot0',
+  context = "web6dot0",
   headers = {},
-  userAgents
+  userAgents,
+  baseUrl = BASE_URL,
+  fetchImpl = fetch,
+  timeoutMs,
 }: FetchParams): Promise<FetchResponse<T>> => {
-  const url = new URL(BASE_URL)
+  if (!fetchImpl) {
+    throw new Error("fetch implementation is required");
+  }
 
-  // Add required API parameters
-  url.searchParams.append('__call', endpoint)
-  url.searchParams.append('_format', 'json')
-  url.searchParams.append('_marker', '0')
-  url.searchParams.append('api_version', '4')
-  url.searchParams.append('ctx', context)
+  const url = new URL(baseUrl);
 
-  // Add endpoint-specific parameters
+  url.searchParams.append("__call", endpoint);
+  url.searchParams.append("_format", "json");
+  url.searchParams.append("_marker", "0");
+  url.searchParams.append("api_version", "4");
+  url.searchParams.append("ctx", context);
+
   Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null) return
-    url.searchParams.append(key, String(value))
-  })
+    if (value === undefined || value === null) return;
+    url.searchParams.append(key, String(value));
+  });
 
-  const response = await fetch(url.toString(), {
+  const controller = timeoutMs ? new AbortController() : undefined;
+  const timeout = timeoutMs
+    ? setTimeout(() => controller?.abort(), timeoutMs)
+    : undefined;
+
+  const response = await fetchImpl(url.toString(), {
     headers: {
-      'Content-Type': 'application/json',
-      'User-Agent': pickUserAgent(userAgents),
-      ...(headers || {})
-    }
-  })
+      "Content-Type": "application/json",
+      "User-Agent": pickUserAgent(userAgents),
+      ...(headers || {}),
+    },
+    signal: controller?.signal,
+  });
 
-  const data = await response.json()
+  if (timeout) {
+    clearTimeout(timeout);
+  }
 
-  return { data: data as T, ok: response.ok, status: response.status }
-}
+  const data = await response.json();
+
+  if (data === null || data === undefined) {
+    return { data: null as unknown as T, ok: false, status: response.status };
+  }
+
+  const dataAny = data as any;
+  if (
+    dataAny.error ||
+    dataAny.status === "failure" ||
+    dataAny.status === "error"
+  ) {
+    return { data: data as T, ok: false, status: response.status };
+  }
+
+  return { data: data as T, ok: response.ok, status: response.status };
+};
 
 /**
  * Exported endpoints object for use in API calls
  */
-export const endpoints = Endpoints
+export const endpoints = Endpoints;
