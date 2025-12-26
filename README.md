@@ -1,10 +1,24 @@
+> ---
+>  ## ⚠️ DEPRECATED — MOVED TO A NEW SDK
+> 
+>
+> This package is no longer maintained.
+>
+> Development has moved to **jiosaavn-sdk**, a production-grade TypeScript SDK
+> with normalized schemas, strict typing, and predictable APIs.
+>
+> 👉 New package: https://www.npmjs.com/package/jiosaavn-sdk  
+> 👉 New repo: https://github.com/saavn-labs/jiosaavn-sdk
+>
+> This package will receive no updates.
+>
+> ---
+
+<br>
+
 # JioSaavn API Client (v2)
 
 Pure-JS client for JioSaavn's native API with normalized models. Works on Node, Bun, Cloudflare Workers, Vercel Edge, and Deno.
-
-[![npm](https://img.shields.io/npm/v/jiosaavn-api-client?logo=npm&style=for-the-badge)](https://www.npmjs.com/package/jiosaavn-api-client)
-[![downloads](https://img.shields.io/npm/dm/jiosaavn-api-client?style=for-the-badge)](https://www.npmjs.com/package/jiosaavn-api-client)
-[![license](https://img.shields.io/npm/l/jiosaavn-api-client?style=for-the-badge)](./LICENSE)
 
 ## Features
 
