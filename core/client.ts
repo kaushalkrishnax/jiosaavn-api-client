@@ -160,6 +160,12 @@ export class JioSaavnClient {
           ErrorCode.API_ERROR,
         );
       }
+      if(errorData.status === "failure" && errorData.msg) {
+        throw createError(
+          `API request failed: ${errorData.msg}`,
+          ErrorCode.API_ERROR,
+        );
+      }
 
       throw createError(
         `API request failed with unknown error (status: ${response.status})`,

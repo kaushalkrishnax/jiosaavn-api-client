@@ -134,10 +134,12 @@ export const fetchFromSaavn = async <T = unknown>({
 
   const data = await response.json();
 
+  const data = await response.json();
+  
   if (data === null || data === undefined) {
     return { data: null as unknown as T, ok: false, status: response.status };
   }
-
+  
   const dataAny = data as any;
   if (
     dataAny.error ||

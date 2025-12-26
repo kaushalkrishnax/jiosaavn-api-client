@@ -1,0 +1,1152 @@
+openapi: 3.0.3
+info:
+  title: JioSaavn API Client
+  description: |
+    Complete API specification for JioSaavn music streaming service.
+    This API provides access to songs, albums, artists, playlists, search, and trending content.
+  version: 1.0.0
+  contact:
+    name: API Support
+  license:
+    name: MIT
+
+servers:
+  - url: https://www.jiosaavn.com/api.php
+    description: Production JioSaavn API Server
+
+tags:
+  - name: Search
+    description: Search operations for songs, albums, artists, and playlists
+  - name: Songs
+    description: Song details, suggestions, and related operations
+  - name: Albums
+    description: Album details and metadata
+  - name: Artists
+    description: Artist profiles, songs, and albums
+  - name: Playlists
+    description: Playlist details and tracks
+  - name: Browse
+    description: Browse and discover content
+
+paths:
+  /search/all:
+    get:
+      tags:
+        - Search
+      operationId: searchAll
+      summary: Search across all entity types
+      description: Search for songs, albums, artists, and playlists simultaneously
+      parameters:
+        - name: query
+          in: query
+          required: true
+          description: Search query string
+          schema:
+            type: string
+          example: "Kesariya"
+      responses:
+        '200':
+          description: Successful search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchAllResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /search/songs:
+    get:
+      tags:
+        - Search
+      operationId: searchSongs
+      summary: Search for songs
+      description: Search for songs by query with pagination support
+      parameters:
+        - name: query
+          in: query
+          required: true
+          description: Search query string
+          schema:
+            type: string
+          example: "Kesariya"
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Paginated song search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSongPreviews'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /search/albums:
+    get:
+      tags:
+        - Search
+      operationId: searchAlbums
+      summary: Search for albums
+      description: Search for albums by query with pagination support
+      parameters:
+        - name: query
+          in: query
+          required: true
+          description: Search query string
+          schema:
+            type: string
+          example: "Brahmastra"
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Paginated album search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAlbumPreviews'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /search/artists:
+    get:
+      tags:
+        - Search
+      operationId: searchArtists
+      summary: Search for artists
+      description: Search for artists by query with pagination support
+      parameters:
+        - name: query
+          in: query
+          required: true
+          description: Search query string
+          schema:
+            type: string
+          example: "Arijit Singh"
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Paginated artist search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedArtistPreviews'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /search/playlists:
+    get:
+      tags:
+        - Search
+      operationId: searchPlaylists
+      summary: Search for playlists
+      description: Search for playlists by query with pagination support
+      parameters:
+        - name: query
+          in: query
+          required: true
+          description: Search query string
+          schema:
+            type: string
+          example: "Bollywood Top 50"
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Paginated playlist search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPlaylistPreviews'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /songs/by-id:
+    get:
+      tags:
+        - Songs
+      operationId: getSongsById
+      summary: Get songs by ID(s)
+      description: Fetch complete song details for one or multiple song IDs
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          description: Single song ID or comma-separated list of song IDs
+          schema:
+            oneOf:
+              - type: string
+              - type: array
+                items:
+                  type: string
+          example: "IhWWHCYp"
+      responses:
+        '200':
+          description: Array of complete song entities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Song'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /songs/by-link:
+    get:
+      tags:
+        - Songs
+      operationId: getSongByLink
+      summary: Get song by JioSaavn link
+      description: Extract and fetch song details from a JioSaavn share URL
+      parameters:
+        - name: link
+          in: query
+          required: true
+          description: JioSaavn song share URL
+          schema:
+            type: string
+          example: "https://www.jiosaavn.com/song/kesariya/IhWWHCYp"
+      responses:
+        '200':
+          description: Complete song entity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Song'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /songs/suggestions:
+    get:
+      tags:
+        - Songs
+      operationId: getSongSuggestions
+      summary: Get song suggestions
+      description: Get recommended songs similar to the provided song(s)
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          description: Song ID or array of song IDs for recommendations
+          schema:
+            oneOf:
+              - type: string
+              - type: array
+                items:
+                  type: string
+          example: "IhWWHCYp"
+        - name: limit
+          in: query
+          description: Maximum number of suggestions to return
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Array of recommended song previews
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SongPreview'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /albums/by-id:
+    get:
+      tags:
+        - Albums
+      operationId: getAlbumById
+      summary: Get album by ID
+      description: Fetch complete album details including track listing
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: JioSaavn album ID
+          schema:
+            type: string
+          example: "33477704"
+      responses:
+        '200':
+          description: Complete album entity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Album'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /albums/by-link:
+    get:
+      tags:
+        - Albums
+      operationId: getAlbumByLink
+      summary: Get album by JioSaavn link
+      description: Extract and fetch album details from a JioSaavn share URL
+      parameters:
+        - name: link
+          in: query
+          required: true
+          description: JioSaavn album share URL
+          schema:
+            type: string
+          example: "https://www.jiosaavn.com/album/brahmastra/xyz"
+      responses:
+        '200':
+          description: Complete album entity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Album'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /artists/by-id:
+    get:
+      tags:
+        - Artists
+      operationId: getArtistById
+      summary: Get artist by ID
+      description: Fetch complete artist profile with bio, top songs, albums, and similar artists
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: JioSaavn artist ID
+          schema:
+            type: string
+          example: "459320"
+        - name: songCount
+          in: query
+          description: Number of top songs to include
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+        - name: albumCount
+          in: query
+          description: Number of top albums to include
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Complete artist profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Artist'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /artists/by-link:
+    get:
+      tags:
+        - Artists
+      operationId: getArtistByLink
+      summary: Get artist by JioSaavn link
+      description: Extract and fetch artist details from a JioSaavn share URL
+      parameters:
+        - name: link
+          in: query
+          required: true
+          description: JioSaavn artist share URL
+          schema:
+            type: string
+          example: "https://www.jiosaavn.com/artist/arijit-singh"
+        - name: songCount
+          in: query
+          description: Number of top songs to include
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+        - name: albumCount
+          in: query
+          description: Number of top albums to include
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Complete artist profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Artist'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /artists/{id}/songs:
+    get:
+      tags:
+        - Artists
+      operationId: getArtistSongs
+      summary: Get artist songs (paginated)
+      description: Fetch paginated list of songs by an artist with sorting options
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: JioSaavn artist ID
+          schema:
+            type: string
+          example: "459320"
+        - $ref: '#/components/parameters/Page'
+        - name: sortBy
+          in: query
+          description: Sort field for songs
+          schema:
+            type: string
+            enum: [alphabetical, popularity, latest]
+            default: alphabetical
+        - name: sortOrder
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+      responses:
+        '200':
+          description: Paginated artist songs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSongPreviews'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /artists/{id}/albums:
+    get:
+      tags:
+        - Artists
+      operationId: getArtistAlbums
+      summary: Get artist albums (paginated)
+      description: Fetch paginated list of albums by an artist with sorting options
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: JioSaavn artist ID
+          schema:
+            type: string
+          example: "459320"
+        - $ref: '#/components/parameters/Page'
+        - name: sortBy
+          in: query
+          description: Sort field for albums
+          schema:
+            type: string
+            enum: [alphabetical, popularity, latest]
+            default: alphabetical
+        - name: sortOrder
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+      responses:
+        '200':
+          description: Paginated artist albums
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAlbumPreviews'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /playlists/by-id:
+    get:
+      tags:
+        - Playlists
+      operationId: getPlaylistById
+      summary: Get playlist by ID
+      description: Fetch complete playlist details with track listing
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: JioSaavn playlist ID
+          schema:
+            type: string
+          example: "110858205"
+        - $ref: '#/components/parameters/Page'
+        - name: songCount
+          in: query
+          description: Number of songs to fetch per page
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+      responses:
+        '200':
+          description: Complete playlist entity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Playlist'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /playlists/by-link:
+    get:
+      tags:
+        - Playlists
+      operationId: getPlaylistByLink
+      summary: Get playlist by JioSaavn link
+      description: Extract and fetch playlist details from a JioSaavn share URL
+      parameters:
+        - name: link
+          in: query
+          required: true
+          description: JioSaavn playlist share URL
+          schema:
+            type: string
+          example: "https://www.jiosaavn.com/featured/romantic-hits"
+        - $ref: '#/components/parameters/Page'
+        - name: songCount
+          in: query
+          description: Number of songs to fetch per page
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+      responses:
+        '200':
+          description: Complete playlist entity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Playlist'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /browse/modules:
+    get:
+      tags:
+        - Browse
+      operationId: getBrowseModules
+      summary: Get browse/discover modules
+      description: Fetch JioSaavn home/discover page content modules
+      responses:
+        '200':
+          description: Browse modules with categorized content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/BrowseModules'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /browse/trending:
+    get:
+      tags:
+        - Browse
+      operationId: getTrendingContent
+      summary: Get trending content
+      description: Fetch current trending songs, albums, artists, or playlists
+      parameters:
+        - name: type
+          in: query
+          description: Type of trending content to fetch
+          schema:
+            type: string
+            enum: [song, album, artist, playlist]
+            default: song
+        - name: language
+          in: query
+          description: Language filter for trending content
+          schema:
+            type: string
+            default: hindi
+            example: hindi
+      responses:
+        '200':
+          description: Trending content by category
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/TrendingContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Page number for pagination (1-indexed)
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+
+    Limit:
+      name: limit
+      in: query
+      description: Number of items per page
+      schema:
+        type: integer
+        default: 10
+        minimum: 1
+        maximum: 100
+
+  schemas:
+    # Common Response Wrapper
+    ApiResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Indicates if the request was successful
+        data:
+          type: object
+          description: Response data (present when success is true)
+        message:
+          type: string
+          description: Error message (present when success is false)
+        code:
+          type: string
+          description: Error code (present when success is false)
+
+    # Pagination
+    Paginated:
+      type: object
+      properties:
+        results:
+          type: array
+          items: {}
+          description: Array of results
+        total:
+          type: integer
+          description: Total number of results available
+        page:
+          type: integer
+          description: Current page number (1-indexed)
+        limit:
+          type: integer
+          description: Number of items per page
+
+    PaginatedSongPreviews:
+      allOf:
+        - $ref: '#/components/schemas/Paginated'
+        - type: object
+          properties:
+            results:
+              type: array
+              items:
+                $ref: '#/components/schemas/SongPreview'
+
+    PaginatedAlbumPreviews:
+      allOf:
+        - $ref: '#/components/schemas/Paginated'
+        - type: object
+          properties:
+            results:
+              type: array
+              items:
+                $ref: '#/components/schemas/AlbumPreview'
+
+    PaginatedArtistPreviews:
+      allOf:
+        - $ref: '#/components/schemas/Paginated'
+        - type: object
+          properties:
+            results:
+              type: array
+              items:
+                $ref: '#/components/schemas/ArtistPreview'
+
+    PaginatedPlaylistPreviews:
+      allOf:
+        - $ref: '#/components/schemas/Paginated'
+        - type: object
+          properties:
+            results:
+              type: array
+              items:
+                $ref: '#/components/schemas/PlaylistPreview'
+
+    # Search Results
+    SearchAllResult:
+      type: object
+      properties:
+        songs:
+          type: array
+          items:
+            $ref: '#/components/schemas/SongPreview'
+        albums:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlbumPreview'
+        artists:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistPreview'
+        playlists:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlaylistPreview'
+
+    # Song Entities
+    SongPreview:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique song identifier
+        name:
+          type: string
+          description: Song name/title
+        album:
+          type: string
+          description: Album name
+        year:
+          type: string
+          description: Release year
+        duration:
+          type: integer
+          description: Song duration in seconds
+        language:
+          type: string
+          description: Song language
+        hasLyrics:
+          type: boolean
+          description: Whether lyrics are available
+        image:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageQuality'
+        url:
+          type: string
+          description: JioSaavn song URL
+        artists:
+          type: object
+          properties:
+            primary:
+              type: array
+              items:
+                $ref: '#/components/schemas/ArtistMini'
+            featured:
+              type: array
+              items:
+                $ref: '#/components/schemas/ArtistMini'
+            all:
+              type: array
+              items:
+                $ref: '#/components/schemas/ArtistMini'
+
+    Song:
+      allOf:
+        - $ref: '#/components/schemas/SongPreview'
+        - type: object
+          properties:
+            downloadUrl:
+              type: array
+              items:
+                $ref: '#/components/schemas/DownloadQuality'
+              description: Available download URLs in various qualities
+            copyright:
+              type: string
+              description: Copyright information
+            label:
+              type: string
+              description: Record label
+
+    # Album Entities
+    AlbumPreview:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        year:
+          type: string
+        type:
+          type: string
+          description: Album type (album, compilation, etc.)
+        playCount:
+          type: integer
+        language:
+          type: string
+        songCount:
+          type: integer
+        image:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageQuality'
+        url:
+          type: string
+        artists:
+          type: object
+          properties:
+            primary:
+              type: array
+              items:
+                $ref: '#/components/schemas/ArtistMini'
+            featured:
+              type: array
+              items:
+                $ref: '#/components/schemas/ArtistMini'
+            all:
+              type: array
+              items:
+                $ref: '#/components/schemas/ArtistMini'
+
+    Album:
+      allOf:
+        - $ref: '#/components/schemas/AlbumPreview'
+        - type: object
+          properties:
+            songs:
+              type: array
+              items:
+                $ref: '#/components/schemas/Song'
+              description: Complete list of songs in the album
+
+    # Artist Entities
+    ArtistMini:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          description: Artist role (singer, composer, lyricist, etc.)
+        image:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageQuality'
+        url:
+          type: string
+
+    ArtistPreview:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        image:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageQuality'
+        url:
+          type: string
+        type:
+          type: string
+        role:
+          type: string
+
+    Artist:
+      allOf:
+        - $ref: '#/components/schemas/ArtistPreview'
+        - type: object
+          properties:
+            followerCount:
+              type: integer
+            fanCount:
+              type: integer
+            isVerified:
+              type: boolean
+            dominantLanguage:
+              type: string
+            dominantType:
+              type: string
+            bio:
+              type: string
+            topSongs:
+              type: array
+              items:
+                $ref: '#/components/schemas/SongPreview'
+            topAlbums:
+              type: array
+              items:
+                $ref: '#/components/schemas/AlbumPreview'
+            singles:
+              type: array
+              items:
+                $ref: '#/components/schemas/SongPreview'
+            similarArtists:
+              type: array
+              items:
+                $ref: '#/components/schemas/ArtistPreview'
+
+    # Playlist Entities
+    PlaylistPreview:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        image:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageQuality'
+        url:
+          type: string
+        songCount:
+          type: integer
+        language:
+          type: string
+
+    Playlist:
+      allOf:
+        - $ref: '#/components/schemas/PlaylistPreview'
+        - type: object
+          properties:
+            description:
+              type: string
+            year:
+              type: string
+            playCount:
+              type: integer
+            followerCount:
+              type: integer
+            username:
+              type: string
+            firstname:
+              type: string
+            lastname:
+              type: string
+            songs:
+              type: array
+              items:
+                $ref: '#/components/schemas/Song'
+
+    # Browse/Discover
+    BrowseModules:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          oneOf:
+            - $ref: '#/components/schemas/AlbumPreview'
+            - $ref: '#/components/schemas/PlaylistPreview'
+            - $ref: '#/components/schemas/SongPreview'
+
+    TrendingContent:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          oneOf:
+            - $ref: '#/components/schemas/SongPreview'
+            - $ref: '#/components/schemas/AlbumPreview'
+            - $ref: '#/components/schemas/ArtistPreview'
+            - $ref: '#/components/schemas/PlaylistPreview'
+
+    # Media Quality
+    ImageQuality:
+      type: object
+      properties:
+        quality:
+          type: string
+          enum: [50x50, 150x150, 500x500]
+        url:
+          type: string
+
+    DownloadQuality:
+      type: object
+      properties:
+        quality:
+          type: string
+          enum: [12kbps, 48kbps, 96kbps, 160kbps, 320kbps]
+        url:
+          type: string
+
+    # Error Response
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          description: Human-readable error message
+        code:
+          type: string
+          description: Machine-readable error code
+          enum:
+            - NETWORK_ERROR
+            - TIMEOUT_ERROR
+            - PARSE_ERROR
+            - VALIDATION_ERROR
+            - API_ERROR
+            - NOT_FOUND
+            - UNKNOWN_ERROR
+
+  responses:
+    BadRequest:
+      description: Bad request - Invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: Invalid request parameters
+            code: VALIDATION_ERROR
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: Resource not found or invalid data
+            code: NOT_FOUND
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: An unexpected error occurred
+            code: API_ERROR

@@ -192,7 +192,6 @@ class JioSaavnError extends Error {
   originalError?: unknown;
   statusCode?: number;
   context?: Record<string, unknown>;
-
   toJSON(): Record<string, unknown>;
 }
 

@@ -5,12 +5,10 @@
 ### Response Structure
 
 **Before (v1):**
-
 - Functions threw errors on API failures
 - Unstructured error messages
 
 **After (v2):**
-
 ```typescript
 type ApiResult<T> =
   | { success: true; data: T }
@@ -28,7 +26,6 @@ if (!result.success) {
 ### Model Normalization
 
 **Images:**
-
 ```typescript
 // Before
 const image = song.image; // string
@@ -42,7 +39,6 @@ images.forEach((img) => {
 ```
 
 **Download Links:**
-
 ```typescript
 // Before
 const encrypted = song.encrypted_media_url; // string (encrypted)
@@ -102,7 +98,6 @@ if (result.success) {
 ### Client Creation
 
 **Before (Global state):**
-
 ```typescript
 import * as jiosaavn from "jiosaavn-api-client";
 // Uses global shared state
@@ -110,7 +105,6 @@ const songs = await jiosaavn.searchSongs({ query: "test" });
 ```
 
 **After (Instance-based):**
-
 ```typescript
 import { JioSaavnClient } from "jiosaavn-api-client";
 
