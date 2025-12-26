@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { build } from 'bun'
-import { rmSync, cpSync } from 'fs'
+import { rmSync } from 'fs'
 
 // Clean dist
 try {

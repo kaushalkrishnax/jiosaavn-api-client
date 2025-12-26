@@ -14,7 +14,7 @@ import {
   getArtistAlbums,
   getPlaylistById,
   getPlaylistByLink,
-} from "../dist";
+} from "../index";
 
 import { type CheckResult } from "./types";
 

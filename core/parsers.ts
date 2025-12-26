@@ -4,16 +4,12 @@
  * @module parsers
  * @internal
  */
+import CryptoJS from "crypto-js";
 
-import type { Models, Paginated } from "../index.js";
-import {
-  safeArrayMap,
-  safeString,
-  toNumber,
-  parseBoolean,
-  extractField,
-  isObject,
-} from "./validators.js";
+import type { Models } from "./types";
+import { safeString, toNumber, parseBoolean, normalizeList } from "./utils";
+import { safeArrayMap, extractField, isObject } from "./validators";
+import { createValidationError } from "./errors";
 
 const IMAGE_QUALITIES = ["50x50", "150x150", "500x500"] as const;
 const AUDIO_QUALITIES = [
@@ -30,9 +26,7 @@ const AUDIO_QUALITIES = [
  * @param imageUrl - Base image URL from API
  * @returns Array of image sources with different resolutions
  */
-export function createImageSources(
-  imageUrl: string | undefined
-): Models.ImageSource[] {
+export function createImageSources(imageUrl: string): Models.ImageSource[] {
   if (!imageUrl) return [];
 
   const protocolRegex = /^http:\/\//;
@@ -47,34 +41,36 @@ export function createImageSources(
 }
 
 /**
- * Create download links from encrypted media URL
+ * Create download links from encrypted media URL (Edge-safe)
  *
  * @param encryptedMediaUrl - Encrypted media URL from API
  * @returns Array of download links with different bitrates
  */
 export function createDownloadLinks(
-  encryptedMediaUrl: string | undefined
+  encryptedMediaUrl: string
 ): Models.DownloadLink[] {
   if (!encryptedMediaUrl) return [];
 
   try {
-    const forge = require("node-forge");
-    const key = "38346591";
-    const iv = "00000000";
+    const key = CryptoJS.enc.Utf8.parse("38346591");
 
-    const encrypted = forge.util.decode64(encryptedMediaUrl);
-    const decipher = forge.cipher.createDecipher(
-      "DES-ECB",
-      forge.util.createBuffer(key)
+    const decrypted = CryptoJS.DES.decrypt(
+      {
+        ciphertext: CryptoJS.enc.Base64.parse(encryptedMediaUrl),
+      } as CryptoJS.lib.CipherParams,
+      key,
+      {
+        mode: CryptoJS.mode.ECB,
+        padding: CryptoJS.pad.Pkcs7,
+      }
     );
-    decipher.start({ iv: forge.util.createBuffer(iv) });
-    decipher.update(forge.util.createBuffer(encrypted));
-    decipher.finish();
-    const decryptedLink: string = decipher.output.getBytes();
 
-    return AUDIO_QUALITIES.map((quality) => ({
-      bitrate: quality.bitrate,
-      url: decryptedLink.replace("_96", quality.id),
+    const decryptedLink = decrypted.toString(CryptoJS.enc.Utf8);
+    if (!decryptedLink) return [];
+
+    return AUDIO_QUALITIES.map((q) => ({
+      bitrate: q.bitrate,
+      url: decryptedLink.replace("_96", q.id),
     }));
   } catch {
     return [];
@@ -102,22 +98,6 @@ export function extractArtistNames(moreInfo: any): string[] {
     .split(",")
     .map((n) => n.trim())
     .filter(Boolean);
-}
-
-/**
- * Parse artist summary from raw API data
- *
- * @param raw - Raw artist data
- * @returns Normalized artist summary
- */
-export function parseArtistSummary(raw: any): Models.ArtistPreview {
-  return {
-    ...parseArtistPreview(raw),
-    images: createImageSources(
-      safeString(extractField(raw, "image", "image_url"))
-    ),
-    url: safeString(extractField(raw, "perma_url", "url")),
-  };
 }
 
 /**
@@ -149,7 +129,9 @@ export function parseArtistsGroup(artistMap: any): Models.ArtistsGroup {
  */
 export function parseSong(songData: any): Models.Song {
   if (!isObject(songData)) {
-    throw new Error("Invalid song data: not an object");
+    throw createValidationError("Invalid song data: not an object", {
+      receivedType: typeof songData,
+    });
   }
 
   const moreInfo: any = songData.more_info || {};
@@ -157,28 +139,28 @@ export function parseSong(songData: any): Models.Song {
 
   return {
     id: safeString(songData.id),
+    type: "song" as const,
     title: safeString(songData.title),
-    entityType: "song" as const,
-    releaseYear: toNumber(songData.year),
-    releaseDateISO: moreInfo?.release_date ?? undefined,
-    durationSeconds: toNumber(moreInfo?.duration),
-    label: moreInfo?.label ?? undefined,
-    isExplicit: parseBoolean(songData.explicit_content),
-    playCount: toNumber(extractField(songData, "play_count", "playCount")),
+    url: safeString(songData.perma_url),
     language: safeString(
       extractField(songData, "language") || moreInfo?.language
     ),
+    releaseYear: toNumber(songData.year),
+    releaseDateISO: moreInfo?.release_date,
+    durationSeconds: toNumber(moreInfo?.duration),
+    playCount: toNumber(extractField(songData, "play_count", "playCount")),
+    label: moreInfo?.label,
+    copyright: moreInfo?.copyright_text,
+    isExplicit: parseBoolean(songData.explicit_content),
     hasLyrics: parseBoolean(moreInfo?.has_lyrics),
-    lyricsId: moreInfo?.lyrics_id ?? undefined,
-    url: safeString(songData.perma_url),
-    copyright: moreInfo?.copyright_text ?? undefined,
+    lyricsId: moreInfo?.lyrics_id,
     album: {
-      id: moreInfo?.album_id ?? undefined,
-      title: moreInfo?.album ?? undefined,
-      url: moreInfo?.album_url ?? undefined,
+      id: moreInfo?.album_id,
+      title: moreInfo?.album,
+      url: moreInfo?.album_url,
     },
     artists: artistsGroup,
-    images: createImageSources(songData.image as string | undefined),
+    images: createImageSources(safeString(songData.image)),
     downloadLinks: createDownloadLinks(moreInfo?.encrypted_media_url),
   };
 }
@@ -191,7 +173,9 @@ export function parseSong(songData: any): Models.Song {
  */
 export function parseAlbum(albumData: any): Models.Album {
   if (!isObject(albumData)) {
-    throw new Error("Invalid album data: not an object");
+    throw createValidationError("Invalid album data: not an object", {
+      receivedType: typeof albumData,
+    });
   }
 
   const moreInfo: any = albumData.more_info || {};
@@ -200,20 +184,82 @@ export function parseAlbum(albumData: any): Models.Album {
 
   return {
     id: safeString(albumData.id),
+    type: "album" as const,
     title: safeString(albumData.title),
-    description:
-      safeString(extractField(albumData, "header_desc", "description")) ||
-      undefined,
-    releaseYear: toNumber(extractField(albumData, "year") || moreInfo?.year),
-    entityType: "album" as const,
-    playCount: toNumber(albumData.play_count),
+    url: safeString(albumData.perma_url),
     language: safeString(albumData.language),
+    description: safeString(
+      extractField(albumData, "header_desc", "description")
+    ),
+    releaseYear: toNumber(extractField(albumData, "year") || moreInfo?.year),
+    songCount: toNumber(moreInfo?.song_count),
+    copyright: safeString(moreInfo?.copyright_text),
     isExplicit: parseBoolean(albumData.explicit_content),
     artists: artistsGroup,
-    songCount: toNumber(moreInfo?.song_count),
-    url: safeString(albumData.perma_url),
-    images: createImageSources(albumData.image as string | undefined),
+    images: createImageSources(safeString(albumData.image)),
     songs: songs.length > 0 ? songs : undefined,
+  };
+}
+
+/**
+ * Parse complete artist entity from raw API data
+ *
+ * @param artistData - Raw artist data from API
+ * @returns Normalized artist entity
+ */
+export function parseArtist(artistData: any): Models.Artist {
+  if (!isObject(artistData)) {
+    throw createValidationError("Invalid artist data: not an object", {
+      receivedType: typeof artistData,
+    });
+  }
+
+  return {
+    id: safeString(extractField(artistData, "artistId", "id")),
+    type: "artist" as const,
+    name: safeString(artistData.name),
+    url: safeString(
+      artistData.perma_url ||
+        (isObject(artistData.urls) && artistData.urls.overview)
+    ),
+    primaryLanguage: safeString(artistData.dominantLanguage),
+    primaryContentType: safeString(artistData.dominantType),
+    availableLanguages: safeArrayMap(artistData.availableLanguages, safeString),
+    followerCount: toNumber(artistData.follower_count),
+    fanCount: toNumber(artistData.fan_count),
+    isVerified: parseBoolean(artistData.isVerified),
+    hasRadio: parseBoolean(artistData.isRadioPresent),
+    bio: safeString(artistData.bio),
+    dateOfBirthISO: safeString(artistData.dob),
+    facebookUrl: safeString(artistData.fb),
+    twitterHandle: safeString(artistData.twitter),
+    wikipediaUrl: safeString(artistData.wiki),
+    routes: isObject(artistData.urls)
+      ? {
+          overview: safeString(artistData.urls?.overview),
+          songs: safeString(artistData.urls?.songs),
+          albums: safeString(artistData.urls?.albums),
+          bio: safeString(artistData.urls?.bio),
+          comments: safeString(artistData.urls?.comments),
+        }
+      : undefined,
+    images: createImageSources(safeString(artistData.image)),
+    topSongs: safeArrayMap(
+      normalizeList(artistData.topSongs, "songs").items,
+      parseSongPreview
+    ),
+    topAlbums: safeArrayMap(
+      normalizeList(artistData.topAlbums, "albums").items,
+      parseAlbumPreview
+    ),
+    singles: safeArrayMap(
+      normalizeList(artistData.singles, "singles").items,
+      parseAlbumPreview
+    ),
+    similarArtists: safeArrayMap(
+      normalizeList(artistData.similarArtists, "artists").items,
+      parseArtistPreview
+    ),
   };
 }
 
@@ -225,7 +271,9 @@ export function parseAlbum(albumData: any): Models.Album {
  */
 export function parsePlaylist(playlistData: any): Models.Playlist {
   if (!isObject(playlistData)) {
-    throw new Error("Invalid playlist data: not an object");
+    throw createValidationError("Invalid playlist data: not an object", {
+      receivedType: typeof playlistData,
+    });
   }
 
   const moreInfo: any = playlistData.more_info || {};
@@ -233,76 +281,45 @@ export function parsePlaylist(playlistData: any): Models.Playlist {
 
   return {
     id: safeString(playlistData.id),
+    type: "playlist" as const,
     title: safeString(playlistData.title),
-    description:
-      safeString(extractField(playlistData, "description", "header_desc")) ||
-      undefined,
-    releaseYear: toNumber(playlistData.year),
-    entityType: "playlist" as const,
-    playCount: toNumber(playlistData.play_count),
-    language: safeString(
-      extractField(playlistData, "language") || moreInfo?.language
-    ),
-    isExplicit: parseBoolean(playlistData.explicit_content),
-    songCount: toNumber(extractField(moreInfo, "song_count")),
     url: safeString(playlistData.perma_url),
-    images: createImageSources(playlistData.image as string | undefined),
+    image: safeString(playlistData.image),
+    description: safeString(
+      extractField(playlistData, "description", "header_desc")
+    ),
+    songCount: toNumber(playlistData.list_count),
+    followerCount: toNumber(moreInfo?.follower_count),
+    isExplicit: parseBoolean(playlistData.explicit_content),
     songs: songs.length > 0 ? songs : undefined,
-    artists:
-      safeArrayMap(moreInfo?.artists, parseArtistPreview).length > 0
-        ? safeArrayMap(moreInfo?.artists, parseArtistPreview)
-        : undefined,
+    artists: safeArrayMap(moreInfo?.artists, parseArtistPreview),
   };
 }
 
-/**
- * Parse complete artist detail from raw API data
+/** Parse browse modules response from API
  *
- * @param artistData - Raw artist data from API
- * @returns Normalized artist entity
+ * @param raw - Raw modules data from API
+ * @returns Normalized browse modules entity
  */
-export function parseArtistDetail(artistData: any): Models.Artist {
-  if (!isObject(artistData)) {
-    throw new Error("Invalid artist data: not an object");
+export function parseBrowseModules(raw: any): Models.BrowseModules {
+  if (!isObject(raw)) {
+    throw createValidationError("Invalid modules response", {
+      receivedType: typeof raw,
+    });
   }
 
   return {
-    id: safeString(extractField(artistData, "artistId", "id")),
-    name: safeString(artistData.name),
-    url: safeString(artistData.perma_url),
-    entityType: "artist" as const,
-    images: createImageSources(artistData.image as string | undefined),
-    followerCount: toNumber(artistData.follower_count),
-    fanCount: toNumber(artistData.fan_count),
-    isVerified: (artistData.isVerified as boolean | undefined) ?? undefined,
-    primaryLanguage:
-      (artistData.dominantLanguage as string | undefined) ?? undefined,
-    primaryContentType:
-      (artistData.dominantType as string | undefined) ?? undefined,
-    bio: Array.isArray(artistData.bio) ? artistData.bio : undefined,
-    dateOfBirthISO: (artistData.dob as string | undefined) ?? undefined,
-    facebookUrl: (artistData.fb as string | undefined) ?? undefined,
-    twitterHandle: (artistData.twitter as string | undefined) ?? undefined,
-    wikipediaUrl: (artistData.wiki as string | undefined) ?? undefined,
-    availableLanguages:
-      (artistData.availableLanguages as string[] | undefined) || [],
-    hasRadio: (artistData.isRadioPresent as boolean | undefined) ?? undefined,
-    topSongs:
-      safeArrayMap(artistData.topSongs, parseSongPreview).length > 0
-        ? safeArrayMap(artistData.topSongs, parseSongPreview)
-        : undefined,
-    topAlbums:
-      safeArrayMap(artistData.topAlbums, parseAlbumPreview).length > 0
-        ? safeArrayMap(artistData.topAlbums, parseAlbumPreview)
-        : undefined,
-    singles:
-      safeArrayMap(artistData.singles, parseSongPreview).length > 0
-        ? safeArrayMap(artistData.singles, parseSongPreview)
-        : undefined,
-    similarArtists:
-      safeArrayMap(artistData.similarArtists, parseArtistPreview).length > 0
-        ? safeArrayMap(artistData.similarArtists, parseArtistPreview)
-        : undefined,
+    radioStations: isObject(raw?.radio)
+      ? safeArrayMap(raw?.radio.featured_stations, parseRadioStationPreview)
+      : undefined,
+    browseDiscover: safeArrayMap(raw?.browse_discover, parseChannelPreview),
+    newAlbums: safeArrayMap(raw?.new_albums, parseAlbumPreview),
+    newTrending: safeArrayMap(raw?.new_trending, parseAlbumPreview),
+    charts: safeArrayMap(raw?.charts, parsePlaylistPreview),
+    topPlaylists: safeArrayMap(raw?.top_playlists, parsePlaylistPreview),
+    topShows: isObject(raw?.top_shows)
+      ? safeArrayMap(raw?.top_shows.shows, parseShowPreview)
+      : undefined,
   };
 }
 
@@ -317,14 +334,15 @@ export function parseSongPreview(song: any): Models.SongPreview {
 
   return {
     id: safeString(song.id),
+    type: "songPreview" as const,
     title: safeString(song.title),
+    url: safeString(song.perma_url),
     artistNames: extractArtistNames(moreInfo),
     albumName: safeString(extractField(moreInfo, "album")),
+    language: safeString(extractField(moreInfo, "language") || song.language),
     durationSeconds: toNumber(extractField(moreInfo, "duration")),
     playCount: toNumber(extractField(song, "play_count", "playCount")),
     images: createImageSources(song.image),
-    url: safeString(song.perma_url),
-    language: safeString(extractField(moreInfo, "language") || song.language),
   };
 }
 
@@ -339,12 +357,13 @@ export function parseAlbumPreview(album: any): Models.AlbumPreview {
 
   return {
     id: safeString(album.id),
+    type: "albumPreview" as const,
     title: safeString(album.title),
-    artistNames: extractArtistNames(moreInfo),
-    images: createImageSources(safeString(album.image)),
-    releaseYear: toNumber(extractField(moreInfo, "year") || album.year),
     url: safeString(album.perma_url),
+    artistNames: extractArtistNames(moreInfo),
     language: safeString(extractField(moreInfo, "language") || album.language),
+    releaseYear: toNumber(extractField(moreInfo, "year") || album.year),
+    images: createImageSources(safeString(album.image)),
   };
 }
 
@@ -357,9 +376,10 @@ export function parseAlbumPreview(album: any): Models.AlbumPreview {
 export function parseArtistPreview(artist: any): Models.ArtistPreview {
   return {
     id: safeString(artist.id),
+    type: "artistPreview" as const,
     name: safeString(extractField(artist, "title", "name")),
-    images: createImageSources(artist.image),
     url: safeString(extractField(artist, "perma_url", "url")),
+    images: createImageSources(artist.image),
   };
 }
 
@@ -373,32 +393,139 @@ export function parsePlaylistPreview(playlist: any): Models.PlaylistPreview {
   const moreInfo = playlist?.more_info || {};
   return {
     id: safeString(playlist.id),
+    type: "playlistPreview" as const,
     title: safeString(playlist.title),
-    images: createImageSources(safeString(playlist.image)),
-    language: safeString(extractField(moreInfo, "language")),
     url: safeString(playlist.perma_url),
+    language: safeString(extractField(moreInfo, "language")),
+    images: createImageSources(safeString(playlist.image)),
   };
 }
 
-/**
- * Build paginated result wrapper
+/** Parse radio station preview (lightweight version for search/lists)
  *
- * @param results - Array of results
- * @param total - Total count from API
- * @param page - Current page number
- * @param limit - Items per page
- * @returns Paginated wrapper
+ * @param radioStation - Raw radio station preview data from API
+ * @returns Normalized radio station preview entity
  */
-export function buildPaginated<T>(
-  results: T[],
-  total: number | undefined,
-  page: number,
-  limit: number
-): Paginated<T> {
+export function parseRadioStationPreview(
+  radioStation: any
+): Models.RadioStationPreview {
+  if (!isObject(radioStation)) {
+    throw createValidationError("Invalid radio station preview", {
+      receivedType: typeof radioStation,
+    });
+  }
+
   return {
-    total: total ?? results.length,
-    page,
-    limit,
-    results,
+    id: safeString(radioStation.id),
+    type: "radioStationPreview" as const,
+    title: safeString(radioStation.title),
+    url: safeString(radioStation.perma_url),
+    language: safeString((radioStation.more_info as any).language),
+    description: safeString((radioStation.more_info as any).description),
+    color: safeString((radioStation.more_info as any).color),
+    isExplicit: radioStation.explicit_content === "1",
+    images: createImageSources(safeString(radioStation.image)),
   };
+}
+
+/** Parse show preview (lightweight version for search/lists)
+ *
+ * @param channel - Raw channel preview data from API
+ * @returns Normalized channel preview entity
+ */
+export function parseChannelPreview(channel: any): Models.ChannelPreview {
+  if (!isObject(channel)) {
+    throw createValidationError("Invalid channel preview", {
+      receivedType: typeof channel,
+    });
+  }
+
+  const moreInfo = (channel.more_info as any) || {};
+  return {
+    id: safeString(channel.id),
+    type: "channelPreview" as const,
+    title: safeString(channel.title),
+    url: safeString(channel.perma_url),
+    subType: safeString(moreInfo.sub_type),
+    isFeatured: moreInfo.is_featured === "1",
+    available: moreInfo.available === "1",
+    tags: isObject(moreInfo.tags)
+      ? (moreInfo.tags as Record<string, string[]>)
+      : undefined,
+    videoUrl: safeString(moreInfo.video_url),
+    videoThumbnail: safeString(moreInfo.video_thumbnail),
+    images: createImageSources(safeString(channel.image)),
+  };
+}
+
+/** Parse show preview (lightweight version for search/lists)
+ *
+ * @param channel - Raw channel data from API
+ * @returns Normalized channel preview entity
+ */
+export function parseShowPreview(channel: any): Models.ShowPreview {
+  if (!isObject(channel)) {
+    throw createValidationError("Invalid show preview", {
+      receivedType: typeof channel,
+    });
+  }
+
+  const moreInfo = (channel.more_info as any) || {};
+  return {
+    id: safeString(channel.id),
+    type: "showPreview" as const,
+    title: safeString(channel.title),
+    url: safeString(channel.perma_url),
+    seasonNumber: toNumber(moreInfo.season_number),
+    releaseDateISO: safeString(moreInfo.release_date),
+    squareImage: safeString(moreInfo.square_image),
+    isExplicit: channel.explicit_content === "1",
+    images: createImageSources(safeString(channel.image)),
+  };
+}
+
+/** Parse trending content response from API
+ *
+ * @param trendingContent - Raw trending content array from API
+ * @returns Normalized trending content entity
+ */
+export function parseTrendingContent(
+  trendingContent: any[]
+): Models.TrendingContent {
+  const result: Models.TrendingContent = {
+    songs: undefined,
+    albums: undefined,
+    playlists: undefined,
+  };
+
+  if (!Array.isArray(trendingContent)) return result;
+
+  for (const item of trendingContent) {
+    if (!isObject(item) || typeof item.type !== "string") continue;
+
+    switch (item.type) {
+      case "song": {
+        if (!result.songs) result.songs = [];
+        result.songs.push(parseSongPreview(item));
+        break;
+      }
+
+      case "album": {
+        if (!result.albums) result.albums = [];
+        result.albums.push(parseAlbumPreview(item));
+        break;
+      }
+
+      case "playlist": {
+        if (!result.playlists) result.playlists = [];
+        result.playlists.push(parsePlaylistPreview(item));
+        break;
+      }
+
+      default:
+        break;
+    }
+  }
+
+  return result;
 }

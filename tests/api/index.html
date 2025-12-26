@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JioSaavn API Tester</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #121212;
+      --bg-tertiary: #1a1a1a;
+      --border-primary: #2a2a2a;
+      --border-hover: #3a3a3a;
+      --text-primary: #f5f5f5;
+      --text-secondary: #a0a0a0;
+      --text-tertiary: #6a6a6a;
+      --accent-primary: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #10b981;
+      --error: #ef4444;
+      --warning: #f59e0b;
+      --get-color: #10b981;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.7);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .app-container {
+      display: flex;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    .app-header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-primary);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .app-title {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .app-title .logo {
+      width: 24px;
+      height: 24px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--success));
+      border-radius: 6px;
+    }
+
+    .app-subtitle {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      font-weight: 400;
+    }
+
+    .main-layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 260px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-primary);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-primary);
+    }
+
+    .sidebar-search {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-primary);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .sidebar-search:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .sidebar-search::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .endpoints-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .endpoint-group {
+      margin-bottom: 20px;
+    }
+
+    .group-label {
+      padding: 8px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .endpoint-item {
+      padding: 8px 16px;
+      margin: 0 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .endpoint-item:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .endpoint-item.active {
+      background: var(--bg-tertiary);
+      box-shadow: inset 2px 0 0 var(--accent-primary);
+    }
+
+    .endpoint-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--accent-primary);
+      border-radius: 0 2px 2px 0;
+    }
+
+    .method-tag {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      min-width: 38px;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+
+    .method-tag.get {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--get-color);
+    }
+
+    .endpoint-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      flex: 1;
+      transition: color 0.15s;
+    }
+
+    .endpoint-item:hover .endpoint-label,
+    .endpoint-item.active .endpoint-label {
+      color: var(--text-primary);
+    }
+
+    .content-area {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .request-panel {
+      flex: 1;
+      background: var(--bg-primary);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-right: 1px solid var(--border-primary);
+    }
+
+    .panel-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border-primary);
+    }
+
+    .panel-title {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+
+    .panel-description {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .url-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      padding: 12px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-primary);
+      border-radius: 8px;
+      align-items: center;
+    }
+
+    .url-method {
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--get-color);
+    }
+
+    .url-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      outline: none;
+    }
+
+    .send-btn {
+      padding: 8px 20px;
+      background: var(--accent-primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .send-btn:hover:not(:disabled) {
+      background: var(--accent-hover);
+      box-shadow: var(--shadow-md);
+    }
+
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .param-section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .param-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .param-row {
+      display: grid;
+      grid-template-columns: 32px 140px 1fr;
+      gap: 8px;
+      align-items: center;
+      padding: 10px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-primary);
+      border-radius: 6px;
+      transition: border-color 0.2s;
+    }
+
+    .param-row:hover {
+      border-color: var(--border-hover);
+    }
+
+    .param-checkbox {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: var(--accent-primary);
+    }
+
+    .param-key {
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .param-value {
+      width: 100%;
+      padding: 6px 10px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-primary);
+      border-radius: 4px;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .param-value:focus {
+      border-color: var(--accent-primary);
+      background: var(--bg-secondary);
+    }
+
+    .param-description {
+      grid-column: 2 / -1;
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+    }
+
+    .response-panel {
+      flex: 1;
+      background: var(--bg-secondary);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .response-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border-primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .response-status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-badge {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .status-badge.success {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+    }
+
+    .status-badge.error {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--error);
+    }
+
+    .response-time {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      padding: 6px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-primary);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .icon-btn:hover {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border-color: var(--border-hover);
+    }
+
+    .response-tabs {
+      display: flex;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border-primary);
+      gap: 4px;
+    }
+
+    .response-tab {
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .response-tab:hover {
+      color: var(--text-secondary);
+    }
+
+    .response-tab.active {
+      color: var(--text-primary);
+      border-bottom-color: var(--accent-primary);
+    }
+
+    .response-body {
+      flex: 1;
+      overflow: auto;
+      padding: 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .json-container {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .json-line {
+      font-family: 'JetBrains Mono', monospace;
+      white-space: pre;
+    }
+
+    .json-toggle {
+      display: inline-block;
+      width: 12px;
+      text-align: center;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      user-select: none;
+      font-size: 10px;
+      margin-right: 4px;
+    }
+
+    .json-toggle:hover {
+      color: var(--text-primary);
+    }
+
+    .json-toggle.collapsed::before {
+      content: '▶';
+    }
+
+    .json-toggle.expanded::before {
+      content: '▼';
+    }
+
+    .json-key {
+      color: #a78bfa;
+      font-weight: 500;
+    }
+
+    .json-string {
+      color: #34d399;
+    }
+
+    .json-number {
+      color: #60a5fa;
+    }
+
+    .json-boolean {
+      color: #fb923c;
+    }
+
+    .json-null {
+      color: #94a3b8;
+    }
+
+    .json-bracket {
+      color: var(--text-primary);
+    }
+
+    .json-collapsed-preview {
+      color: #6a6a6a;
+      font-style: italic;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-tertiary);
+      gap: 12px;
+    }
+
+    .empty-icon {
+      width: 48px;
+      height: 48px;
+      opacity: 0.5;
+    }
+
+    .error-container {
+      padding: 16px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      color: var(--error);
+    }
+
+    .error-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .loading-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border-primary);
+      border-top-color: var(--accent-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-secondary);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-primary);
+      border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--border-hover);
+    }
+
+    @media (max-width: 1024px) {
+      .sidebar {
+        width: 220px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="app-title">
+        <div class="logo"></div>JioSaavn API
+      </div>
+      <div class="app-subtitle">Interactive API Documentation</div>
+    </header>
+    <div class="main-layout">
+      <aside class="sidebar">
+        <div class="sidebar-header"><input type="text" class="sidebar-search" placeholder="Search endpoints..."
+            id="searchInput"></div>
+        <div class="endpoints-container" id="endpointsContainer"></div>
+      </aside>
+      <div class="content-area">
+        <div class="request-panel">
+          <div class="panel-header">
+            <h2 class="panel-title" id="endpointTitle">Select an endpoint</h2>
+            <p class="panel-description" id="endpointDescription">Choose an endpoint from the sidebar to begin testing
+            </p>
+          </div>
+          <div class="panel-body">
+            <div class="url-bar">
+              <span class="url-method" id="urlMethod">GET</span>
+              <input type="text" class="url-input" id="urlInput" value="client.method()" readonly>
+              <button class="send-btn" id="sendBtn" disabled>Send</button>
+            </div>
+            <div id="paramsContainer"></div>
+          </div>
+        </div>
+        <div class="response-panel">
+          <div class="response-header">
+            <div class="response-status">
+              <span id="statusBadge"></span>
+              <span class="response-time" id="responseTime"></span>
+            </div>
+            <div class="action-buttons">
+              <button class="icon-btn" id="copyBtn" style="display: none;"><span>📋</span><span>Copy</span></button>
+            </div>
+          </div>
+          <div class="response-tabs">
+            <div class="response-tab active" data-tab="body">Response</div>
+          </div>
+          <div class="response-body" id="responseBody">
+            <div class="empty-state">
+              <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <p>Send a request to see the response</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const API_ENDPOINTS = {
+      'search-all': {
+        title: 'Search All',
+        description: 'Search for songs, albums, artists, and playlists',
+        method: 'searchAll',
+        group: 'Search',
+        params: [{
+          key: 'query',
+          value: 'levitating',
+          required: true,
+          description: 'Search query string'
+        }]
+      },
+      'search-songs': {
+        title: 'Search Songs',
+        description: 'Search specifically for songs',
+        method: 'searchSongs',
+        group: 'Search',
+        params: [{
+          key: 'query',
+          value: 'levitating',
+          required: true,
+          description: 'Search query string'
+        }, {
+          key: 'page',
+          value: '1',
+          required: false,
+          description: 'Page number (default: 1)'
+        }, {
+          key: 'limit',
+          value: '10',
+          required: false,
+          description: 'Results per page (default: 10)'
+        }]
+      },
+      'search-albums': {
+        title: 'Search Albums',
+        description: 'Search specifically for albums',
+        method: 'searchAlbums',
+        group: 'Search',
+        params: [{
+          key: 'query',
+          value: 'future nostalgia',
+          required: true,
+          description: 'Search query string'
+        }, {
+          key: 'page',
+          value: '1',
+          required: false,
+          description: 'Page number'
+        }, {
+          key: 'limit',
+          value: '10',
+          required: false,
+          description: 'Results per page'
+        }]
+      },
+      'search-artists': {
+        title: 'Search Artists',
+        description: 'Search specifically for artists',
+        method: 'searchArtists',
+        group: 'Search',
+        params: [{
+          key: 'query',
+          value: 'arijit singh',
+          required: true,
+          description: 'Search query'
+        }, {
+          key: 'page',
+          value: '1',
+          required: false,
+          description: 'Page number'
+        }, {
+          key: 'limit',
+          value: '10',
+          required: false,
+          description: 'Results per page'
+        }]
+      },
+      'search-playlists': {
+        title: 'Search Playlists',
+        description: 'Search specifically for playlists',
+        method: 'searchPlaylists',
+        group: 'Search',
+        params: [{
+          key: 'query',
+          value: 'bollywood',
+          required: true,
+          description: 'Search query'
+        }, {
+          key: 'page',
+          value: '1',
+          required: false,
+          description: 'Page number'
+        }, {
+          key: 'limit',
+          value: '10',
+          required: false,
+          description: 'Results per page'
+        }]
+      },
+      'songs-by-id': {
+        title: 'Get Songs by ID',
+        description: 'Retrieve song details by ID(s)',
+        method: 'getSongsById',
+        group: 'Songs',
+        params: [{
+          key: 'ids',
+          value: '3IoDK8qI',
+          required: true,
+          description: 'Song ID or comma-separated IDs'
+        }]
+      },
+      'songs-by-link': {
+        title: 'Get Song by Link',
+        description: 'Retrieve song details via JioSaavn URL',
+        method: 'getSongByLink',
+        group: 'Songs',
+        params: [{
+          key: 'link',
+          value: 'https://www.jiosaavn.com/song/levitating/QyEEdT8IRno',
+          required: true,
+          description: 'JioSaavn song URL'
+        }]
+      },
+      'song-suggestions': {
+        title: 'Get Song Suggestions',
+        description: 'Get radio recommendations based on a song',
+        method: 'getSongSuggestions',
+        group: 'Songs',
+        params: [{
+          key: 'ids',
+          value: '3IoDK8qI',
+          required: true,
+          description: 'Song ID or comma-separated IDs'
+        }, {
+          key: 'limit',
+          value: '10',
+          required: false,
+          description: 'Number of suggestions'
+        }]
+      },
+      'song-lyrics': {
+        title: 'Get Song Lyrics',
+        description: 'Retrieve lyrics for a song',
+        method: 'getSongLyrics',
+        group: 'Songs',
+        params: [{
+          key: 'id',
+          value: '3IoDK8qI',
+          required: true,
+          description: 'Song ID'
+        }]
+      },
+      'album-by-id': {
+        title: 'Get Album by ID',
+        description: 'Retrieve album details and songs',
+        method: 'getAlbumById',
+        group: 'Albums',
+        params: [{
+          key: 'id',
+          value: '1134601',
+          required: true,
+          description: 'Album ID'
+        }]
+      },
+      'album-by-link': {
+        title: 'Get Album by Link',
+        description: 'Retrieve album via JioSaavn URL',
+        method: 'getAlbumByLink',
+        group: 'Albums',
+        params: [{
+          key: 'link',
+          value: 'https://www.jiosaavn.com/album/vedas-yajurveda/BvKmXHhUzOg_"',
+          required: true,
+          description: 'JioSaavn album URL'
+        }]
+      },
+      'artist-by-id': {
+        title: 'Get Artist by ID',
+        description: 'Retrieve artist details, songs, and albums',
+        method: 'getArtistById',
+        group: 'Artists',
+        params: [{
+          key: 'id',
+          value: '459320',
+          required: true,
+          description: 'Artist ID'
+        }, {
+          key: 'songCount',
+          value: '10',
+          required: false,
+          description: 'Number of songs'
+        }, {
+          key: 'albumCount',
+          value: '10',
+          required: false,
+          description: 'Number of albums'
+        }]
+      },
+      'artist-by-link': {
+        title: 'Get Artist by Link',
+        description: 'Retrieve artist via JioSaavn URL',
+        method: 'getArtistByLink',
+        group: 'Artists',
+        params: [{
+          key: 'link',
+          value: 'https://www.jiosaavn.com/artist/arijit-singh-songs/LlRWpHzy3Hk_',
+          required: true,
+          description: 'JioSaavn artist URL'
+        }, {
+          key: 'songCount',
+          value: '10',
+          required: false,
+          description: 'Number of songs'
+        }, {
+          key: 'albumCount',
+          value: '10',
+          required: false,
+          description: 'Number of albums'
+        }]
+      },
+      'artist-songs': {
+        title: 'Get Artist Songs',
+        description: 'Get paginated list of artist songs',
+        method: 'getArtistSongs',
+        group: 'Artists',
+        params: [{
+          key: 'id',
+          value: '459320',
+          required: true,
+          description: 'Artist ID'
+        }, {
+          key: 'page',
+          value: '1',
+          required: false,
+          description: 'Page number'
+        }, {
+          key: 'sortBy',
+          value: 'latest',
+          required: false,
+          description: 'Sort order'
+        }, {
+          key: 'sortOrder',
+          value: 'desc',
+          required: false,
+          description: 'Sort direction'
+        }]
+      },
+      'artist-albums': {
+        title: 'Get Artist Albums',
+        description: 'Get paginated list of artist albums',
+        method: 'getArtistAlbums',
+        group: 'Artists',
+        params: [{
+          key: 'id',
+          value: '459320',
+          required: true,
+          description: 'Artist ID'
+        }, {
+          key: 'page',
+          value: '1',
+          required: false,
+          description: 'Page number'
+        }, {
+          key: 'sortBy',
+          value: 'latest',
+          required: false,
+          description: 'Sort order'
+        }, {
+          key: 'sortOrder',
+          value: 'desc',
+          required: false,
+          description: 'Sort direction'
+        }]
+      },
+      'playlist-by-id': {
+        title: 'Get Playlist by ID',
+        description: 'Retrieve playlist details and songs',
+        method: 'getPlaylistById',
+        group: 'Playlists',
+        params: [{
+          key: 'id',
+          value: '110858205',
+          required: true,
+          description: 'Playlist ID'
+        }]
+      },
+      'playlist-by-link': {
+        title: 'Get Playlist by Link',
+        description: 'Retrieve playlist via JioSaavn URL',
+        method: 'getPlaylistByLink',
+        group: 'Playlists',
+        params: [{
+          key: 'link',
+          value: 'https://www.jiosaavn.com/featured/trending-today/I3kvhipIy73uCJW60TJk1Q__',
+          required: true,
+          description: 'JioSaavn playlist URL'
+        }]
+      },
+      'browseModules': {
+        title: 'Get Browse Modules',
+        description: 'Get featured/trending content modules',
+        method: 'getBrowseModules',
+        group: 'Discover',
+        params: []
+      },
+      'trendingContent': {
+        title: 'Get Trending Content',
+        description: 'Get trending songs, albums, and artists',
+        method: 'getTrendingContent',
+        group: 'Discover',
+        params: [{
+          key: 'type',
+          value: 'song',
+          required: true,
+          description: 'Entity Type'
+        }, {
+          key: 'language',
+          value: 'hindi',
+          required: true,
+          description: "Entity language"
+        }]
+      }
+    };
+    let currentEndpoint = null,
+      currentResponse = null;
+    document.addEventListener('DOMContentLoaded', init);
+
+    function init() {
+      renderEndpoints();
+      setupEventListeners()
+    }
+
+    function setupEventListeners() {
+      document.getElementById('sendBtn').addEventListener('click', handleSendRequest);
+      document.getElementById('copyBtn').addEventListener('click', handleCopyResponse);
+      document.getElementById('searchInput').addEventListener('input', handleSearch)
+    }
+
+    function renderEndpoints() {
+      const a = document.getElementById('endpointsContainer'),
+        b = {};
+      Object.entries(API_ENDPOINTS).forEach(([c, d]) => {
+        b[d.group] || (b[d.group] = []), b[d.group].push({
+          id: c,
+          ...d
+        })
+      }), a.innerHTML = Object.entries(b).map(([c, d]) => `<div class="endpoint-group"><div class="group-label">${c}</div>${d.map(e => `<div class="endpoint-item" data-endpoint="${e.id}"><span class="method-tag get">GET</span><span class="endpoint-label">${e.title}</span></div>`).join('')}</div>`).join(''), a.querySelectorAll('.endpoint-item').forEach(c => {
+        c.addEventListener('click', () => selectEndpoint(c.dataset.endpoint))
+      })
+    }
+
+    function selectEndpoint(a) {
+      currentEndpoint = API_ENDPOINTS[a], currentEndpoint && (document.querySelectorAll('.endpoint-item').forEach(b => {
+        b.classList.toggle('active', b.dataset.endpoint === a)
+      }), document.getElementById('endpointTitle').textContent = currentEndpoint.title, document.getElementById('endpointDescription').textContent = currentEndpoint.description, document.getElementById('urlInput').value = `client.${currentEndpoint.method}()`, document.getElementById('sendBtn').disabled = !1, renderParameters(), clearResponse())
+    }
+
+    function renderParameters() {
+      const a = document.getElementById('paramsContainer');
+      currentEndpoint.params && 0 !== currentEndpoint.params.length ? a.innerHTML = `<div class="param-section"><div class="section-title">Parameters</div><div class="param-grid">${currentEndpoint.params.map((b, c) => `<div class="param-row"><input type="checkbox" class="param-checkbox" data-index="${c}" ${b.required ? 'checked' : 'checked'}><span class="param-key">${b.key}</span><input type="text" class="param-value" data-index="${c}" value="${b.value}" placeholder="Enter value"><div class="param-description">${b.description}</div></div>`).join('')}</div></div>` : a.innerHTML = ''
+    }
+    async function handleSendRequest() {
+      if (currentEndpoint) {
+        const a = {};
+        currentEndpoint.params.forEach((c, d) => {
+          const e = document.querySelector(`.param-checkbox[data-index="${d}"]`),
+            f = document.querySelector(`.param-value[data-index="${d}"]`);
+          e?.checked && f?.value && (a[c.key] = f.value)
+        }), document.getElementById('urlInput').value = `client.${currentEndpoint.method}(${JSON.stringify(a)})`, showLoading();
+        const b = performance.now();
+        try {
+          const d = new URL('/api/test', window.location.origin);
+          d.searchParams.set('method', currentEndpoint.method), d.searchParams.set('params', JSON.stringify(a));
+          const c = await fetch(d),
+            e = await c.json(),
+            f = Math.round(performance.now() - b);
+          if (!c.ok) throw Error(e.error || 'Request failed');
+          showSuccess(e, f)
+        } catch (c) {
+          const d = Math.round(performance.now() - b);
+          showError(c.message, d)
+        }
+      }
+    }
+
+    function showLoading() {
+      document.getElementById('statusBadge').innerHTML = '', document.getElementById('responseTime').textContent = '', document.getElementById('copyBtn').style.display = 'none', document.getElementById('responseBody').innerHTML = '<div class="loading-container"><div class="spinner"></div><span>Sending request...</span></div>'
+    }
+
+    function showSuccess(a, b) {
+      currentResponse = a, document.getElementById('statusBadge').innerHTML = '<span class="status-badge success">200 OK</span>', document.getElementById('responseTime').textContent = `${b}ms`, document.getElementById('copyBtn').style.display = 'flex', displayJSON(a)
+    }
+
+    function showError(a, b) {
+      document.getElementById('statusBadge').innerHTML = '<span class="status-badge error">Error</span>', document.getElementById('responseTime').textContent = `${b}ms`, document.getElementById('responseBody').innerHTML = `<div class="error-container"><div class="error-title">Request Failed</div><div>${a}</div></div>`
+    }
+
+    function displayJSON(a) {
+      const b = document.getElementById('responseBody');
+      b.innerHTML = '<div class="json-container"></div>';
+      const c = b.querySelector('.json-container');
+      renderJSON(a, c, 0)
+    }
+
+    function renderJSON(a, b, c) {
+      if (null === a) {
+        const d = createLine(c);
+        d.innerHTML = indent(c) + '<span class="json-null">null</span>', b.appendChild(d);
+        return
+      }
+      const d = typeof a;
+      if ('string' === d) {
+        const e = createLine(c);
+        e.innerHTML = indent(c) + `<span class="json-string">"${escapeHtml(a)}"</span>`, b.appendChild(e)
+      } else if ('number' === d) {
+        const e = createLine(c);
+        e.innerHTML = indent(c) + `<span class="json-number">${a}</span>`, b.appendChild(e)
+      } else if ('boolean' === d) {
+        const e = createLine(c);
+        e.innerHTML = indent(c) + `<span class="json-boolean">${a}</span>`, b.appendChild(e)
+      } else Array.isArray(a) ? renderArray(a, b, c) : 'object' === d && renderObject(a, b, c)
+    }
+
+    function renderObject(a, b, c) {
+      const d = Object.keys(a),
+        e = 'obj-' + Math.random().toString(36).substr(2, 9),
+        f = createLine(c),
+        g = document.createElement('span');
+      g.className = 'json-toggle expanded', g.dataset.targetId = e;
+      const h = document.createElement('span');
+      h.className = 'json-bracket', h.textContent = '{';
+      const i = document.createElement('span');
+      i.className = 'json-collapsed-preview', i.innerHTML = `{${d.length} ${1 === d.length ? 'property' : 'properties'}},`, i.style.display = 'none', f.appendChild(document.createTextNode(indent(c).replace(/ /g, '\xa0'))), f.appendChild(g), f.appendChild(document.createTextNode(' ')), f.appendChild(h), f.appendChild(i), b.appendChild(f);
+      const j = document.createElement('div');
+      j.dataset.contentId = e, d.forEach((e, f) => {
+        const g = f === d.length - 1,
+          h = a[e];
+        if (null !== h && 'object' == typeof h) Array.isArray(h) ? renderArrayWithKey(h, j, c + 1, e, !g) : renderObjectWithKey(h, j, c + 1, e, !g);
+        else {
+          const a = createLine(c + 1);
+          a.innerHTML = indent(c + 1) + `<span class="json-key">"${e}"</span>: `;
+          let b = '';
+          null === h ? b = '<span class="json-null">null</span>' : 'string' == typeof h ? b = `<span class="json-string">"${escapeHtml(h)}"</span>` : 'number' == typeof h ? b = `<span class="json-number">${h}</span>` : 'boolean' == typeof h && (b = `<span class="json-boolean">${h}</span>`), a.innerHTML += b + (g ? '' : ', '), j.appendChild(a)
+        }
+      }), b.appendChild(j);
+      const k = createLine(c);
+      k.innerHTML = indent(c) + '}', k.dataset.closeId = e, b.appendChild(k), g.addEventListener('click', () => {
+        const a = g.classList.contains('expanded');
+        g.classList.toggle('expanded', !a), g.classList.toggle('collapsed', a), a ? (j.style.display = 'none', k.style.display = 'none', h.style.display = 'none', i.style.display = 'inline') : (j.style.display = 'block', k.style.display = 'block', h.style.display = 'inline', i.style.display = 'none')
+      })
+    }
+
+    function renderObjectWithKey(a, b, c, d, e) {
+      const f = Object.keys(a),
+        g = 'obj-' + Math.random().toString(36).substr(2, 9),
+        h = createLine(c),
+        i = document.createElement('span');
+      i.className = 'json-toggle expanded', i.dataset.targetId = g;
+      const j = document.createElement('span');
+      j.className = 'json-bracket', j.textContent = '{';
+      const k = document.createElement('span');
+      k.className = 'json-collapsed-preview';
+      k.innerHTML = `{${f.length} ${1 === f.length ? 'property' : 'properties'}}` + (e ? ',' : '');
+      k.style.display = 'none';
+      const keySpan = document.createElement('span');
+      keySpan.className = 'json-key';
+      keySpan.textContent = `"${d}"`;
+      h.appendChild(document.createTextNode(indent(c)));
+      h.appendChild(i);
+      h.appendChild(document.createTextNode(' '));
+      h.appendChild(keySpan);
+      h.appendChild(document.createTextNode(': '));
+      h.appendChild(j);
+      h.appendChild(k);
+      b.appendChild(h);
+      const l = document.createElement('div');
+      l.dataset.contentId = g, f.forEach((b, d) => {
+        const e = d === f.length - 1,
+          g = a[b];
+        if (null !== g && 'object' == typeof g) Array.isArray(g) ? renderArrayWithKey(g, l, c + 1, b, !e) : renderObjectWithKey(g, l, c + 1, b, !e);
+        else {
+          const a = createLine(c + 1);
+          a.innerHTML = indent(c + 1) + `<span class="json-key">"${b}"</span>: `;
+          let d = '';
+          null === g ? d = '<span class="json-null">null</span>' : 'string' == typeof g ? d = `<span class="json-string">"${escapeHtml(g)}"</span>` : 'number' == typeof g ? d = `<span class="json-number">${g}</span>` : 'boolean' == typeof g && (d = `<span class="json-boolean">${g}</span>`), a.innerHTML += d + (e ? '' : ', '), l.appendChild(a)
+        }
+      }), b.appendChild(l);
+      const m = createLine(c);
+      m.innerHTML = indent(c) + '}' + (e ? ',' : ''), m.dataset.closeId = g, b.appendChild(m), i.addEventListener('click', () => {
+        const a = i.classList.contains('expanded');
+        i.classList.toggle('expanded', !a), i.classList.toggle('collapsed', a), a ? (l.style.display = 'none', m.style.display = 'none', j.style.display = 'none', k.style.display = 'inline') : (l.style.display = 'block', m.style.display = 'block', j.style.display = 'inline', k.style.display = 'none')
+      })
+    }
+
+    function renderArray(a, b, c) {
+      const d = 'arr-' + Math.random().toString(36).substr(2, 9),
+        e = createLine(c),
+        f = document.createElement('span');
+      f.className = 'json-toggle expanded', f.dataset.targetId = d;
+      const g = document.createElement('span');
+      g.className = 'json-bracket', g.textContent = '[';
+      const h = document.createElement('span');
+      h.className = 'json-collapsed-preview', h.innerHTML = `[${a.length} ${1 === a.length ? 'item' : 'items'}]`, h.style.display = 'none', e.appendChild(document.createTextNode(indent(c).replace(/ /g, '\xa0'))), e.appendChild(f), e.appendChild(document.createTextNode(' ')), e.appendChild(g), e.appendChild(h), b.appendChild(e);
+      const i = document.createElement('div');
+      i.dataset.contentId = d, a.forEach((b, d) => {
+        const e = d === a.length - 1;
+        if (null !== b && 'object' == typeof b) {
+          Array.isArray(b) ? renderArray(b, i, c + 1) : renderObject(b, i, c + 1);
+          if (!e) {
+            const a = i.lastChild;
+            a && (a.innerHTML += ',')
+          }
+        } else {
+          const a = createLine(c + 1);
+          let d = '';
+          null === b ? d = '<span class="json-null">null</span>' : 'string' == typeof b ? d = `<span class="json-string">"${escapeHtml(b)}"</span>` : 'number' == typeof b ? d = `<span class="json-number">${b}</span>` : 'boolean' == typeof b && (d = `<span class="json-boolean">${b}</span>`), a.innerHTML = indent(c + 1) + d + (e ? '' : ', '), i.appendChild(a)
+        }
+      }), b.appendChild(i);
+      const j = createLine(c);
+      j.innerHTML = indent(c) + ']', j.dataset.closeId = d, b.appendChild(j), f.addEventListener('click', () => {
+        const a = f.classList.contains('expanded');
+        f.classList.toggle('expanded', !a), f.classList.toggle('collapsed', a), a ? (i.style.display = 'none', j.style.display = 'none', g.style.display = 'none', h.style.display = 'inline') : (i.style.display = 'block', j.style.display = 'block', g.style.display = 'inline', h.style.display = 'none')
+      })
+    }
+
+    function renderArrayWithKey(a, b, c, d, e) {
+      const f = 'arr-' + Math.random().toString(36).substr(2, 9),
+        g = createLine(c),
+        h = document.createElement('span');
+      h.className = 'json-toggle expanded', h.dataset.targetId = f;
+      const i = document.createElement('span');
+      i.className = 'json-bracket', i.textContent = '[';
+      const j = document.createElement('span');
+      j.className = 'json-collapsed-preview';
+      j.innerHTML = `[${a.length} ${1 === a.length ? 'item' : 'items'}]` + (e ? ',' : '');
+      j.style.display = 'none';
+      const keySpan = document.createElement('span');
+      keySpan.className = 'json-key';
+      keySpan.textContent = `"${d}"`;
+      g.appendChild(document.createTextNode(indent(c)));
+      g.appendChild(h);
+      g.appendChild(document.createTextNode(' '));
+      g.appendChild(keySpan);
+      g.appendChild(document.createTextNode(': '));
+      g.appendChild(i);
+      g.appendChild(j);
+      b.appendChild(g);
+      const k = document.createElement('div');
+      k.dataset.contentId = f, a.forEach((b, d) => {
+        const e = d === a.length - 1;
+        if (null !== b && 'object' == typeof b) {
+          Array.isArray(b) ? renderArray(b, k, c + 1) : renderObject(b, k, c + 1);
+          if (!e) {
+            const a = k.lastChild;
+            a && (a.innerHTML += ',')
+          }
+        } else {
+          const a = createLine(c + 1);
+          let d = '';
+          null === b ? d = '<span class="json-null">null</span>' : 'string' == typeof b ? d = `<span class="json-string">"${escapeHtml(b)}"</span>` : 'number' == typeof b ? d = `<span class="json-number">${b}</span>` : 'boolean' == typeof b && (d = `<span class="json-boolean">${b}</span>`), a.innerHTML = indent(c + 1) + d + (e ? '' : ', '), k.appendChild(a)
+        }
+      }), b.appendChild(k);
+      const l = createLine(c);
+      l.innerHTML = indent(c) + ']' + (e ? ',' : ''), l.dataset.closeId = f, b.appendChild(l), h.addEventListener('click', () => {
+        const a = h.classList.contains('expanded');
+        h.classList.toggle('expanded', !a), h.classList.toggle('collapsed', a), a ? (k.style.display = 'none', l.style.display = 'none', i.style.display = 'none', j.style.display = 'inline') : (k.style.display = 'block', l.style.display = 'block', i.style.display = 'inline', j.style.display = 'none')
+      })
+    }
+
+    function createLine(a) {
+      const b = document.createElement('div');
+      return b.className = 'json-line', b
+    }
+
+    function indent(a) {
+      return '  '.repeat(a)
+    }
+
+    function escapeHtml(a) {
+      const b = document.createElement('div');
+      return b.textContent = a, b.innerHTML
+    }
+
+    function clearResponse() {
+      currentResponse = null, document.getElementById('statusBadge').innerHTML = '', document.getElementById('responseTime').textContent = '', document.getElementById('copyBtn').style.display = 'none', document.getElementById('responseBody').innerHTML = '<div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/></svg><p>Send a request to see the response</p></div>'
+    }
+
+    function handleCopyResponse() {
+      currentResponse && navigator.clipboard.writeText(JSON.stringify(currentResponse, null, 2)).then(() => {
+        const a = document.getElementById('copyBtn'),
+          b = a.innerHTML;
+        a.innerHTML = '<span>✓</span><span>Copied!</span>', setTimeout(() => {
+          a.innerHTML = b
+        }, 2e3)
+      })
+    }
+
+    function handleSearch(a) {
+      const b = a.target.value.toLowerCase();
+      document.querySelectorAll('.endpoint-item').forEach(a => {
+        const c = a.textContent.toLowerCase();
+        a.style.display = c.includes(b) ? 'flex' : 'none'
+      })
+    } </script>
+</body>
+
+</html>
