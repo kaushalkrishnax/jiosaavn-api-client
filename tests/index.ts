@@ -7,13 +7,13 @@ const ONLY_SCHEMA = process.argv.includes("--only-schema");
 
 async function main() {
   logLine(
-    "╔════════════════════════════════════════════════════════════════════╗"
+    "╔════════════════════════════════════════════════════════════════════╗",
   );
   logLine(
-    "║          JioSaavn API Client – Comprehensive Check                 ║"
+    "║          JioSaavn API Client – Comprehensive Check                 ║",
   );
   logLine(
-    "╚════════════════════════════════════════════════════════════════════╝"
+    "╚════════════════════════════════════════════════════════════════════╝",
   );
 
   const results = await runChecks();

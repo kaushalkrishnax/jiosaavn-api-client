@@ -1,39 +1,29 @@
 {
   "name": "jiosaavn-api-client",
   "version": "2.0.0",
-  "description": "Complete, type-safe TypeScript client for JioSaavn API. Supports all endpoints including search, songs, albums, artists, and playlists. Works on Node, Bun, Cloudflare Workers, Vercel Edge, and Deno.",
+  "description": "Complete, type-safe TypeScript client for the JioSaavn API. Supports search, songs, albums, artists, playlists, trending, and modules. Works on Node, Bun, Cloudflare Workers, Vercel Edge, and Deno.",
   "type": "module",
-  "main": "./index.ts",
-  "module": "./index.ts",
-  "types": "./index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.d.ts",
-      "import": "./index.ts"
-    },
-    "./utils": {
-      "types": "./core/utils.ts",
-      "import": "./core/utils.ts"
-    },
-    "./fetch": {
-      "types": "./core/fetch.ts",
-      "import": "./core/fetch.ts"
-    },
-    "./endpoints": {
-      "types": "./core/endpoints.ts",
-      "import": "./core/endpoints.ts"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "files": [
-    "*.ts",
-    "*.d.ts",
-    "core/*.ts",
+    "dist",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "test": "bun run test/index.js",
-    "test:schema": "bun run test/index.js --only-schema"
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:schema": "bun run tests/ --only-schema",
+    "test:api": "bun run --watch tests/api/server",
+    "prettier": "prettier --write ."
   },
   "keywords": [
     "jiosaavn",
@@ -42,16 +32,18 @@
     "api",
     "client",
     "typescript",
-    "type-safe",
+    "edge",
     "cloudflare-workers",
     "vercel-edge",
+    "bun",
+    "deno",
     "streaming",
     "download",
     "songs",
     "albums",
     "artists",
     "playlists",
-    "search"
+    "trending"
   ],
   "author": "Kaushal Krishna <kaushalkrishnax@gmail.com>",
   "license": "MIT",
@@ -64,14 +56,15 @@
   },
   "homepage": "https://github.com/kaushalkrishnax/jiosaavn-api-client#readme",
   "dependencies": {
-    "node-forge": "^1.3.3",
+    "crypto-js": "^4.2.0",
     "zod": "^4.2.1"
   },
   "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5.9.3"
+    "@types/bun": "latest",
+    "@types/crypto-js": "^4.2.2",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
   },
   "engines": {
     "node": ">=18.0.0"

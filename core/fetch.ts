@@ -1,12 +1,13 @@
-import { Endpoints, type EndpointValue } from "./endpoints.js";
-import { pickUserAgent } from "./utils.js";
+import { Endpoints, type EndpointValue } from "./endpoints";
+import { pickUserAgent } from "./utils";
+import { createValidationError } from "./errors";
 
 /**
  * API context/environment to use for requests
  * - 'web6dot0': Web API (default, more stable)
  * - 'android': Android app API (may have different rate limits)
  */
-export type ApiContext = "web6dot0" | "android";
+export type ApiContext = "web6dot0" | "wap6dot0" | "android";
 
 /**
  * Parameters for making an API request to JioSaavn
@@ -93,7 +94,9 @@ export const fetchFromSaavn = async <T = unknown>({
   timeoutMs,
 }: FetchParams): Promise<FetchResponse<T>> => {
   if (!fetchImpl) {
-    throw new Error("fetch implementation is required");
+    throw createValidationError("fetch implementation is required", {
+      providedFetchImpl: typeof fetchImpl,
+    });
   }
 
   const url = new URL(baseUrl);
@@ -126,6 +129,8 @@ export const fetchFromSaavn = async <T = unknown>({
   if (timeout) {
     clearTimeout(timeout);
   }
+
+  console.log(`Fetched URL: ${url.toString()} - Status: ${response.status}`);
 
   const data = await response.json();
 

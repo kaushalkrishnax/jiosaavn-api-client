@@ -14,7 +14,7 @@ import {
   getArtistAlbums,
   getPlaylistById,
   getPlaylistByLink,
-} from "../dist";
+} from "../index";
 
 import { type CheckResult } from "./types";
 
@@ -44,7 +44,7 @@ export async function runChecks(): Promise<CheckResult[]> {
   async function check<T>(
     name: string,
     request: any,
-    fn: (params: any) => Promise<T>
+    fn: (params: any) => Promise<T>,
   ) {
     try {
       const response = await fn(request);
@@ -57,29 +57,29 @@ export async function runChecks(): Promise<CheckResult[]> {
   await check(
     "searchSongs",
     { query: SEARCH_SONG_QUERY, limit: SEARCH_LIMIT },
-    searchSongs
+    searchSongs,
   );
   await check(
     "searchAlbums",
     { query: SEARCH_ALBUM_QUERY, limit: SEARCH_LIMIT },
-    searchAlbums
+    searchAlbums,
   );
   await check(
     "searchArtists",
     { query: SEARCH_ARTIST_QUERY, limit: SEARCH_LIMIT },
-    searchArtists
+    searchArtists,
   );
   await check(
     "searchPlaylists",
     { query: SEARCH_PLAYLIST_QUERY, limit: SEARCH_LIMIT },
-    searchPlaylists
+    searchPlaylists,
   );
   await check("getSongsById", { ids: SONG_ID }, getSongsById);
   await check("getSongByLink", { link: SONG_LINK }, getSongByLink);
   await check(
     "getSongSuggestions",
     { id: SONG_ID, limit: SEARCH_LIMIT },
-    getSongSuggestions
+    getSongSuggestions,
   );
   await check("getAlbumById", { id: ALBUM_ID }, getAlbumById);
   await check("getAlbumByLink", { link: ALBUM_LINK }, getAlbumByLink);

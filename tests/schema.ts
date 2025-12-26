@@ -37,7 +37,7 @@ export function inferSchema(value: unknown, depth = 0): SchemaNode {
     }
 
     const itemSchemas = dedupeSchemas(
-      value.map((v) => inferSchema(v, depth + 1))
+      value.map((v) => inferSchema(v, depth + 1)),
     );
 
     return {
